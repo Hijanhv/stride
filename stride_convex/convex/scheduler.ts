@@ -15,11 +15,15 @@ import {
 } from "./_generated/server";
 import {
   APTOS_FULLNODE_URL,
-  DECIBEL_CONFIG,
+  CONTRACT_ADDRESS,
   IS_MAINNET,
   WALLET_CONFIG,
 } from "./constants";
-import { buildPlaceOrderPayload } from "./lib/decibel";
+import {
+  extractOrderIdFromTransaction,
+  getPrimarySubaccountAddress,
+  waitForOrderFill,
+} from "./lib/econia";
 
 /**
  * SIP Scheduler Module
@@ -41,6 +45,7 @@ type SIPData = {
   tokenAddress?: string;
   tokenSymbol?: string;
   vaultAddress?: string;
+  sipIndex?: number;
   status: "active" | "paused" | "cancelled" | "completed";
   nextExecution: number;
   lastExecutedAt?: number;
@@ -277,13 +282,15 @@ export const updateTransactionStatus = internalMutation({
 async function executeSIPOnChain(
   sip: SIPData,
   user: NonNullable<UserForSIP>
-): Promise<ExecutionResult> {
+): Promise<ExecutionResult & { orderId?: string; fillAmount?: number }> {
   // Validate inputs
   if (!user.walletAddress) {
     return { success: false, error: "User wallet address not found" };
   }
 
-
+  if (!sip.vaultAddress) {
+    return { success: false, error: "Vault address not found" };
+  }
 
   try {
     // Initialize Aptos Client
@@ -297,43 +304,77 @@ async function executeSIPOnChain(
     if (!WALLET_CONFIG.SCHEDULER_PRIVATE_KEY) {
       throw new Error("SCHEDULER_PRIVATE_KEY not configured");
     }
-    const privateKey = new Ed25519PrivateKey(WALLET_CONFIG.SCHEDULER_PRIVATE_KEY);
+    const privateKey = new Ed25519PrivateKey(
+      WALLET_CONFIG.SCHEDULER_PRIVATE_KEY
+    );
     const schedulerAccount = new Ed25519Account({ privateKey });
 
-    // Build Transaction Payload
-    // Note: We use the single order entrypoint as per instructions
-    const payload = buildPlaceOrderPayload({
-      marketName: DECIBEL_CONFIG.USDC_APT_MARKET_ID,
-      price: 0, // Market order (0 price usually implies market, or specific logic needed)
-      // TODO: Fetch real price if limit order, or use oracle.
-      // For SIP, we might want a market order or a limit order with slippage.
-      // The current instruction says "place_order_to_subaccount".
-      // We'll assume 0 price = market order for now, or use a fetch.
-      size: sip.amount * 1000000, // Assuming amount is in USDC (6 decimals) -> check token decimals
-      isBuy: true,
-      userAddr: user.walletAddress,
-    });
+    // Get admin address for access control
+    const adminAddress = process.env.ADMIN_ADDRESS || CONTRACT_ADDRESS;
 
-    // Build and Submit Transaction
+    // Build Transaction to execute SIP via our executor contract
     const transaction = await aptos.transaction.build.simple({
       sender: schedulerAccount.accountAddress,
-      data: payload as any,
+      data: {
+        function: `${CONTRACT_ADDRESS}::executor::execute_sip`,
+        typeArguments: [],
+        functionArguments: [
+          sip.vaultAddress, // vault_obj
+          0, // sip_index (first SIP in vault)
+          "0x1::aptos_coin::AptosCoin", // input_asset (USDC placeholder - using APT for testnet)
+          "0x1::aptos_coin::AptosCoin", // target_asset (APT)
+          adminAddress, // admin_addr for access control
+        ],
+      },
     });
 
+    // Submit transaction
     const pendingTx = await aptos.signAndSubmitTransaction({
       signer: schedulerAccount,
       transaction,
     });
+
+    console.log(`[Scheduler] Transaction submitted: ${pendingTx.hash}`);
 
     // Wait for confirmation
     const executedTx = await aptos.waitForTransaction({
       transactionHash: pendingTx.hash,
     });
 
+    if (!executedTx.success) {
+      return {
+        success: false,
+        txHash: executedTx.hash,
+        error: "Transaction failed on-chain",
+      };
+    }
+
+    // Extract order ID from events (if Econia order was placed)
+    const orderId = extractOrderIdFromTransaction(executedTx);
+
+    // If we got an order ID, wait for fill
+    let fillAmount: number | undefined;
+    if (orderId) {
+      console.log(`[Scheduler] Order placed: ${orderId}, waiting for fill...`);
+
+      const subaccountAddr = getPrimarySubaccountAddress(user.walletAddress);
+      const fillEvent = await waitForOrderFill(subaccountAddr, orderId, 30000);
+
+      if (fillEvent) {
+        fillAmount = fillEvent.fill_amount;
+        console.log(`[Scheduler] Order filled: ${fillAmount} tokens received`);
+      } else {
+        console.warn(
+          `[Scheduler] Order ${orderId} did not fill within timeout`
+        );
+      }
+    }
+
     return {
-      success: executedTx.success,
+      success: true,
       txHash: executedTx.hash,
-      error: executedTx.success ? undefined : "Transaction failed on-chain",
+      orderId: orderId ?? undefined,
+      fillAmount,
     };
   } catch (error: any) {
     console.error("[Scheduler] On-chain execution failed:", error);

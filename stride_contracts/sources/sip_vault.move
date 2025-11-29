@@ -8,6 +8,7 @@ module stride_contracts::sip_vault {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
     use aptos_framework::event;
+    use stride_contracts::access_control;
 
     /// Error codes
     /// User is not authorized to perform this action
@@ -230,14 +231,19 @@ module stride_contracts::sip_vault {
 
     /// Deposit funds into the vault on behalf of a user (e.g. from Treasury).
     /// This allows the Treasury to fund the vault after a Fiat payment.
+    /// SECURITY: Only authorized treasury operators can call this
     public entry fun deposit_for_user<AssetType: key>(
         treasury: &signer,
         vault_obj: Object<Vault>,
-        amount: u64
+        amount: u64,
+        admin_addr: address
     ) acquires Vault {
+        // CRITICAL: Verify treasury is authorized
+        access_control::verify_treasury_operator(admin_addr, treasury);
+        access_control::verify_not_paused(admin_addr);
+        
         assert!(amount > 0, E_INVALID_AMOUNT);
         
-        let treasury_addr = signer::address_of(treasury);
         let vault_addr = object::object_address(&vault_obj);
         let vault = borrow_global_mut<Vault>(vault_addr);
         

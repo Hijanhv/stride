@@ -18,6 +18,7 @@ import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_decibel from "../lib/decibel.js";
+import type * as lib_econia from "../lib/econia.js";
 import type * as lib_oracle from "../lib/oracle.js";
 import type * as oracle from "../oracle.js";
 import type * as receipts from "../receipts.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/decibel": typeof lib_decibel;
+  "lib/econia": typeof lib_econia;
   "lib/oracle": typeof lib_oracle;
   oracle: typeof oracle;
   receipts: typeof receipts;

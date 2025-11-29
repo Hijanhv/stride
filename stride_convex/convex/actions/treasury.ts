@@ -1,20 +1,32 @@
 "use node";
 
-import { Aptos, AptosConfig, Ed25519Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
+import {
+  Aptos,
+  AptosConfig,
+  Ed25519Account,
+  Ed25519PrivateKey,
+  Network,
+} from "@aptos-labs/ts-sdk";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
-import { APTOS_FULLNODE_URL, CONTRACT_ADDRESS, IS_MAINNET, TOKENS } from "../constants";
+import {
+  APTOS_FULLNODE_URL,
+  CONTRACT_ADDRESS,
+  IS_MAINNET,
+  TOKENS,
+} from "../constants";
 import { convertInrToUsdc } from "../lib/oracle";
 
 /**
  * Treasury Service
- * 
+ *
  * Bridges Fiat (INR) to Crypto (USDC).
  * 1. Calculates USDC equivalent of INR payment.
  * 2. Sends USDC from Treasury Wallet to User's SIP Vault.
  */
 
-const TREASURY_PRIVATE_KEY = process.env.TREASURY_PRIVATE_KEY || process.env.SCHEDULER_PRIVATE_KEY || "";
+const TREASURY_PRIVATE_KEY =
+  process.env.TREASURY_PRIVATE_KEY || process.env.SCHEDULER_PRIVATE_KEY || "";
 
 export const fundUserVault = internalAction({
   args: {
@@ -30,7 +42,9 @@ export const fundUserVault = internalAction({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    console.log(`[Treasury] Processing funding for User ${args.userId} (₹${args.amountInr})`);
+    console.log(
+      `[Treasury] Processing funding for User ${args.userId} (₹${args.amountInr})`
+    );
 
     if (!TREASURY_PRIVATE_KEY) {
       console.error("[Treasury] Private key not configured");
@@ -40,7 +54,9 @@ export const fundUserVault = internalAction({
     try {
       // 1. Calculate USDC Amount
       const usdcAmount = await convertInrToUsdc(args.amountInr);
-      console.log(`[Treasury] Conversion: ₹${args.amountInr} => ${usdcAmount / 1000000} USDC`);
+      console.log(
+        `[Treasury] Conversion: ₹${args.amountInr} => ${usdcAmount / 1000000} USDC`
+      );
 
       // 2. Initialize Aptos
       const config = new AptosConfig({
@@ -56,21 +72,27 @@ export const fundUserVault = internalAction({
       // 4. Send USDC to User's Vault
       // Note: We transfer to the Vault Object Address, not the User's Wallet Address
       // This ensures funds are locked for SIP execution
-      
+
       // USDC Asset Type (using the one from constants)
       // For transfer, we usually use `0x1::aptos_account::transfer_coins` if it's a Coin,
       // or `0x1::primary_fungible_store::transfer` if it's FA.
-      // Assuming standard FA or Coin. Let's use the generic transfer if possible, 
-      // or specific Coin transfer. 
+      // Assuming standard FA or Coin. Let's use the generic transfer if possible,
+      // or specific Coin transfer.
       // Since we are using "Moon Coin" or similar on testnet which might be a Coin:
-      const coinType = TOKENS.USDC.address; 
+      const coinType = TOKENS.USDC.address;
+
+      // Get admin address from environment (the account that deployed contracts)
+      const adminAddress =
+        process.env.ADMIN_ADDRESS ||
+        process.env.CONTRACT_ADDRESS ||
+        CONTRACT_ADDRESS;
 
       const transaction = await aptos.transaction.build.simple({
         sender: treasuryAccount.accountAddress,
         data: {
           function: `${CONTRACT_ADDRESS}::sip_vault::deposit_for_user`,
           typeArguments: [coinType],
-          functionArguments: [args.vaultAddress, usdcAmount],
+          functionArguments: [args.vaultAddress, usdcAmount, adminAddress],
         },
       });
 
@@ -96,7 +118,6 @@ export const fundUserVault = internalAction({
         usdcAmount,
         txHash: executedTx.hash,
       };
-
     } catch (error: any) {
       console.error("[Treasury] Funding failed:", error);
       return {
