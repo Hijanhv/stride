@@ -4,12 +4,9 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-# Use "_" for compilation with --named-addresses flag during deployment
-# For deployment: aptos move publish --named-addresses stride_contracts=0xb637deda1832e64b602b1010da7c29482a6291d760e5dbdd05f68ca69eab7fad
 stride_contracts = "_"
 
 [dev-addresses]
-# Used for testing
 stride_contracts = "0xCAFE"
 
 [dependencies.AptosFramework]

@@ -112,81 +112,47 @@ module stride_contracts::executor {
         let input_asset_addr = object::object_address(&input_asset);
         let target_asset_addr = object::object_address(&target_asset);
 
-        // 2. Derive Decibel Addresses
-        // Market Name: "USDC-APT-PERP" (Hardcoded for hackathon/testnet demo)
-        // In production, this should be looked up from a registry or passed as argument
-        let market_name = std::string::utf8(b"USDC-APT-PERP");
-        
-        // Global PerpEngine address derivation
-        // Seed: "GlobalPerpEngine"
-        let perp_engine_seed = std::string::utf8(b"GlobalPerpEngine");
-        let perp_engine_addr = object::create_object_address(
-            &@Decibel,
-            *std::string::bytes(&perp_engine_seed)
-        );
+        // 2. Hold funds in vault temporarily for Convex backend to process
+        // Convex will execute the Decibel swap via API
+        primary_fungible_store::deposit(vault_addr, input_fa);
 
-        // Market address derivation
-        // Seed: Market Name
-        let market_addr = object::create_object_address(
-            &perp_engine_addr,
-            *std::string::bytes(&market_name)
-        );
+        // 3. Emit SwapPending event for Convex to process
+        // Convex polls for this event and executes actual Decibel swap
+        event::emit(SwapPending {
+            vault_addr,
+            vault_owner,
+            sip_index,
+            input_asset: input_asset_addr,
+            target_asset: target_asset_addr,
+            amount_in,
+            timestamp: now,
+        });
 
-        // Subaccount address derivation
-        // Seed: "decibel_dex_primary"
-        let subaccount_seed = std::string::utf8(b"decibel_dex_primary");
-        let subaccount_addr = object::create_object_address(
-            &vault_owner,
-            *std::string::bytes(&subaccount_seed)
-        );
+        // 4. For testnet demo: Update SIP stats immediately with simulated output
+        // In production, Convex will call back with actual amounts after swap
+        let simulated_output = amount_in;
+        sip_vault::update_sip_after_execution(vault_obj, sip_index, amount_in, simulated_output);
 
-        // 3. Deposit funds to Subaccount
-        // We must deposit the withdrawn funds into the user's subaccount to trade
-        // Note: This assumes the subaccount is already created. 
-        // If not, we might need to create it, but usually frontend/onboarding handles that.
-        // For this flow, we transfer to subaccount.
-        primary_fungible_store::deposit(subaccount_addr, input_fa);
+        let reward_points = amount_in / 10;
+        rewards::add_points(vault_owner, reward_points);
 
-        // 4. Place Market Order on Decibel
-        Decibel::dex_accounts::place_order_to_subaccount(
-            scheduler,
-            subaccount_addr,
-            market_addr,
-            0, // price (0 for market order)
-            amount_in, // size
-            true, // is_buy
-            0, // time_in_force (GTC)
-            false, // reduce_only
-            std::option::none(), // client_order_id
-            std::option::none(), // stop_price
-            std::option::none(), // tp_trigger_price
-            std::option::none(), // tp_limit_price
-            std::option::none(), // sl_trigger_price
-            std::option::none(), // sl_limit_price
-            std::option::none(), // builder_addr
-            std::option::none()  // builder_fee
-        );
-
-        // 5. Emit Swap Executed Event
-        // Note: We don't know the exact output amount yet as it's an async fill on CLOB
-        // Backend will track the fill via indexer and update stats
+        // 5. Emit completion events
         event::emit(SwapExecuted {
             vault_addr,
             input_asset: input_asset_addr,
             output_asset: target_asset_addr,
             amount_in,
-            amount_out: 0, // Pending fill
-            market_id: 1, // Placeholder
+            amount_out: simulated_output,
+            market_id: 1,
             timestamp: now,
         });
 
-        // 6. Emit Execution Completed
         event::emit(SIPExecutionCompleted {
             vault_addr,
             sip_index,
             amount_in,
-            amount_out: 0, // Pending fill
-            reward_points: 0, // Will be calculated after fill
+            amount_out: simulated_output,
+            reward_points,
             timestamp: now,
         });
     }

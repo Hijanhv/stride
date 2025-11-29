@@ -361,4 +361,14 @@ export default defineSchema({
   })
     .index("by_job_type", ["jobType"])
     .index("by_status", ["status"]),
+
+  /**
+   * System State Table
+   * Key-value store for system-level state tracking
+   */
+  system_state: defineTable({
+    key: v.string(),
+    value: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

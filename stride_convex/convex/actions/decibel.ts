@@ -1,7 +1,18 @@
 "use node";
 
-import { action } from "../_generated/server";
+import { v } from "convex/values";
+import { action, internalAction } from "../_generated/server";
+import { internal } from "../_generated/api";
 import * as decibel from "../lib/decibel";
+import { fetchSwapPendingEvents } from "../lib/geomi";
+import {
+  Aptos,
+  AptosConfig,
+  Network,
+  Account,
+  Ed25519PrivateKey,
+  InputEntryFunctionData
+} from "@aptos-labs/ts-sdk";
 
 /**
  * Decibel Actions
@@ -284,7 +295,6 @@ export const calculateSlippage = action(
  * Check if Decibel is available on current network
  */
 export const isDecibelAvailable = action(async () => {
-  // Check if Decibel API is reachable
   try {
     const markets = await decibel.getMarkets();
     return {
@@ -303,3 +313,123 @@ export const isDecibelAvailable = action(async () => {
     };
   }
 });
+
+// ============================================================================
+// SWAP EXECUTION
+// ============================================================================
+
+/**
+ * Process pending swaps from SwapPending events
+ * Called by cron job every minute
+ */
+export const processPendingSwaps = internalAction({
+  args: {},
+  returns: v.object({
+    success: v.boolean(),
+    processedCount: v.number(),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx) => {
+    try {
+      const lastProcessedVersion = await ctx.runQuery(
+        internal.transactions.getLastProcessedSwapVersion
+      );
+
+      const pendingEvents = await fetchSwapPendingEvents(
+        lastProcessedVersion || "0",
+        50
+      );
+
+      if (pendingEvents.length === 0) {
+        return { success: true, processedCount: 0 };
+      }
+
+      console.log(`[Decibel] Processing ${pendingEvents.length} pending swaps`);
+
+      let processedCount = 0;
+
+      for (const event of pendingEvents) {
+        try {
+          await executeSwapForEvent(ctx, event);
+          processedCount++;
+
+          await ctx.runMutation(internal.transactions.updateLastProcessedSwapVersion, {
+            version: event.transaction_version,
+          });
+        } catch (error) {
+          console.error(`[Decibel] Failed to execute swap for event ${event.transaction_version}:`, error);
+        }
+      }
+
+      return {
+        success: true,
+        processedCount,
+      };
+    } catch (error) {
+      console.error("[Decibel] Process pending swaps error:", error);
+      return {
+        success: false,
+        processedCount: 0,
+        error: "Failed to process pending swaps",
+      };
+    }
+  },
+});
+
+/**
+ * Execute a Decibel swap for a SwapPending event
+ */
+async function executeSwapForEvent(_ctx: any, event: any) {
+  const config = {
+    network: (process.env.APTOS_NETWORK || "testnet") as Network,
+    schedulerPrivateKey: process.env.SCHEDULER_PRIVATE_KEY || "",
+  };
+
+  if (!config.schedulerPrivateKey) {
+    throw new Error("SCHEDULER_PRIVATE_KEY not configured");
+  }
+
+  const aptosConfig = new AptosConfig({ network: config.network });
+  const aptos = new Aptos(aptosConfig);
+
+  const schedulerAccount = Account.fromPrivateKey({
+    privateKey: new Ed25519PrivateKey(config.schedulerPrivateKey),
+  });
+
+  const marketName = "APT-PERP";
+  const amountIn = parseFloat(event.amount_in);
+
+  const payloadData = decibel.buildPlaceOrderPayload({
+    marketName,
+    price: 0,
+    size: amountIn / 1e8,
+    isBuy: true,
+    userAddr: event.vault_owner,
+  });
+
+  console.log(`[Decibel] Placing market order for vault ${event.vault_addr}, amount: ${amountIn}`);
+
+  const entryFunctionData: InputEntryFunctionData = {
+    function: payloadData.function as `${string}::${string}::${string}`,
+    typeArguments: payloadData.typeArguments,
+    functionArguments: payloadData.functionArguments,
+  };
+
+  const transaction = await aptos.transaction.build.simple({
+    sender: schedulerAccount.accountAddress,
+    data: entryFunctionData,
+  });
+
+  const committedTxn = await aptos.signAndSubmitTransaction({
+    signer: schedulerAccount,
+    transaction,
+  });
+
+  await aptos.waitForTransaction({
+    transactionHash: committedTxn.hash,
+  });
+
+  console.log(`[Decibel] Swap executed successfully: ${committedTxn.hash}`);
+
+  return committedTxn.hash;
+}

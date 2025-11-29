@@ -40,6 +40,18 @@ crons.interval(
   internal.actions.geomi.syncBlockchainEvents
 );
 
+// ============================================================================
+// SWAP EXECUTION
+// ============================================================================
 
+/**
+ * Process pending swaps and execute via Decibel
+ * Polls for SwapPending events and executes DEX swaps
+ */
+crons.interval(
+  "process-pending-swaps",
+  { minutes: 1 }, // Check every minute for pending swaps
+  internal.actions.decibel.processPendingSwaps
+);
 
 export default crons;

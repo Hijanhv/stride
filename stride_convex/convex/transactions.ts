@@ -461,3 +461,52 @@ export const getByUserForPeriod = internalQuery({
     );
   },
 });
+
+// ============================================================================
+// SWAP VERSION TRACKING
+// ============================================================================
+
+/**
+ * Get last processed swap version for event polling
+ */
+export const getLastProcessedSwapVersion = internalQuery({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const state = await ctx.db
+      .query("system_state")
+      .filter((q) => q.eq(q.field("key"), "last_processed_swap_version"))
+      .first();
+
+    return state?.value || null;
+  },
+});
+
+/**
+ * Update last processed swap version
+ */
+export const updateLastProcessedSwapVersion = internalMutation({
+  args: { version: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("system_state")
+      .filter((q) => q.eq(q.field("key"), "last_processed_swap_version"))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: args.version,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("system_state", {
+        key: "last_processed_swap_version",
+        value: args.version,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return null;
+  },
+});
