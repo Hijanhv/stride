@@ -49,30 +49,60 @@ export const GEOMI_WEBHOOK_URL = process.env.GEOMI_WEBHOOK_URL || "";
 // DECIBEL CLOB CONFIGURATION
 // ============================================================================
 
-// Decibel contract addresses
-// Decibel contract addresses (Defaults to Econia Testnet)
-// Source: Econia Docs (Testnet)
+// Decibel - The world's fastest on-chain trading engine by Aptos Labs
+// Official API: https://api.netna.aptoslabs.com/decibel
+// Package on Aptos: 0xb8a5788314451ce4d2fbbad32e1bad88d4184b73943b7fe5166eab93cf1a5a95
+export const DECIBEL_TESTNET_ADDRESS =
+  "0xb8a5788314451ce4d2fbbad32e1bad88d4184b73943b7fe5166eab93cf1a5a95";
+
 export const DECIBEL_CONFIG = {
-  PACKAGE_ADDRESS: process.env.DECIBEL_PACKAGE_ADDRESS || "0xc0deb00c9154b6b64db01e277648f5bd694cecc703fd0d9053fb95a58b292b17", // Econia Testnet
-  MARKET_REGISTRY: process.env.DECIBEL_MARKET_REGISTRY || "0xc0deb00c9154b6b64db01e277648f5bd694cecc703fd0d9053fb95a58b292b17",
-  USDC_APT_MARKET_ID: process.env.DECIBEL_USDC_APT_MARKET_ID || "0x1::aptos_coin::AptosCoin-0x1::aptos_coin::AptosCoin", // Placeholder
+  // On-chain package address (from Move.toml)
+  PACKAGE_ADDRESS:
+    process.env.DECIBEL_PACKAGE_ADDRESS || DECIBEL_TESTNET_ADDRESS,
+
+  // API endpoints
+  API_BASE_URL:
+    process.env.DECIBEL_API_URL || "https://api.netna.aptoslabs.com/decibel",
+  WS_URL: process.env.DECIBEL_WS_URL || "wss://api.netna.aptoslabs.com/decibel",
+  FULLNODE_URL:
+    process.env.DECIBEL_FULLNODE_URL ||
+    "https://api.netna.staging.aptoslabs.com/v1",
+
+  // Market symbols (perpetuals)
   MARKETS: {
-    USDC_APT: process.env.DECIBEL_USDC_APT_MARKET_ID || "0x1::aptos_coin::AptosCoin-0x1::aptos_coin::AptosCoin",
+    BTC_PERP: "BTC-PERP",
+    APT_PERP: "APT-PERP",
+    ETH_PERP: "ETH-PERP",
+    SOL_PERP: "SOL-PERP",
   },
-  API_URL: "https://api.testnet.econia.dev/v1",
+
+  // Decibel uses 9 decimals for prices and sizes
+  PRICE_DECIMALS: 9,
+  SIZE_DECIMALS: 9,
+
+  // Order types
+  TIME_IN_FORCE: {
+    GOOD_TILL_CANCELED: 0,
+    POST_ONLY: 1,
+    IMMEDIATE_OR_CANCEL: 2,
+  },
 };
 
-// Validation: Warn instead of fail for missing secrets in dev
+// Validation
 if (!process.env.DECIBEL_PACKAGE_ADDRESS) {
-  console.warn("⚠️ DECIBEL_PACKAGE_ADDRESS is missing. Using Econia Testnet defaults.");
+  console.warn(
+    `⚠️ DECIBEL_PACKAGE_ADDRESS not set. Using default testnet address: ${DECIBEL_TESTNET_ADDRESS}`
+  );
 }
 
 // ============================================================================
 // SMART CONTRACT ADDRESSES
 // ============================================================================
 
-// Deployed contract address
-export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "";
+// Deployed contract address (Testnet deployment)
+export const CONTRACT_ADDRESS =
+  process.env.CONTRACT_ADDRESS ||
+  "0xb637deda1832e64b602b1010da7c29482a6291d760e5dbdd05f68ca69eab7fad";
 
 // Module names
 export const MODULES = {

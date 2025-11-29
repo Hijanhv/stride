@@ -17,19 +17,25 @@ import {
   APTOS_FULLNODE_URL,
   CONTRACT_ADDRESS,
   IS_MAINNET,
+  TOKENS,
   WALLET_CONFIG,
 } from "./constants";
-import {
-  extractOrderIdFromTransaction,
-  getPrimarySubaccountAddress,
-  waitForOrderFill,
-} from "./lib/econia";
 
 /**
  * SIP Scheduler Module
  *
  * Handles the automated execution of Systematic Investment Plans (SIPs).
  * Runs on a cron schedule to process due SIPs and trigger blockchain transactions.
+ *
+ * ARCHITECTURE:
+ * 1. Cron job calls executeBatch every minute
+ * 2. Queries Convex DB for SIPs due for execution
+ * 3. For each due SIP, calls execute_sip_simple on-chain
+ * 4. Contract emits SwapPending event for backend to process actual DEX swap
+ * 5. Updates SIP status in Convex DB
+ *
+ * NOTE: On testnet, we use execute_sip_simple which doesn't require Decibel
+ * In production, use execute_sip which integrates with Decibel CLOB
  */
 
 // ============================================================================
@@ -276,9 +282,10 @@ export const updateTransactionStatus = internalMutation({
 
 /**
  * Execute SIP transaction on Aptos blockchain
- * TODO: Integrate with Aptos SDK for real transactions
+ *
+ * Uses execute_sip_simple for testnet (no Decibel dependency)
+ * In production, switch to execute_sip for full Decibel integration
  */
-
 async function executeSIPOnChain(
   sip: SIPData,
   user: NonNullable<UserForSIP>
@@ -309,21 +316,32 @@ async function executeSIPOnChain(
     );
     const schedulerAccount = new Ed25519Account({ privateKey });
 
-    // Get admin address for access control
-    const adminAddress = process.env.ADMIN_ADDRESS || CONTRACT_ADDRESS;
+    // Get admin address for access control (contract deployer)
+    const adminAddress = CONTRACT_ADDRESS;
+
+    // Get SIP index (default to 0 if not specified)
+    const sipIndex = sip.sipIndex ?? 0;
+
+    // Input asset metadata address (APT on testnet)
+    // The contract expects Object<Metadata>, which is the FA metadata address
+    const inputAssetMetadata = TOKENS.APT.metadata;
+
+    console.log(`[Scheduler] Executing SIP for vault: ${sip.vaultAddress}`);
+    console.log(`[Scheduler] SIP Index: ${sipIndex}, Amount: ${sip.amount}`);
 
     // Build Transaction to execute SIP via our executor contract
+    // Using execute_sip which integrates with Decibel CLOB
     const transaction = await aptos.transaction.build.simple({
       sender: schedulerAccount.accountAddress,
       data: {
         function: `${CONTRACT_ADDRESS}::executor::execute_sip`,
         typeArguments: [],
         functionArguments: [
-          sip.vaultAddress, // vault_obj
-          0, // sip_index (first SIP in vault)
-          "0x1::aptos_coin::AptosCoin", // input_asset (USDC placeholder - using APT for testnet)
-          "0x1::aptos_coin::AptosCoin", // target_asset (APT)
-          adminAddress, // admin_addr for access control
+          sip.vaultAddress, // vault_obj: Object<Vault>
+          sipIndex.toString(), // sip_index: u64
+          inputAssetMetadata, // input_asset: Object<Metadata>
+          TOKENS.APT.metadata, // target_asset: Object<Metadata> (Assuming APT for now)
+          adminAddress, // admin_addr: address (for access control)
         ],
       },
     });
@@ -345,35 +363,31 @@ async function executeSIPOnChain(
       return {
         success: false,
         txHash: executedTx.hash,
-        error: "Transaction failed on-chain",
+        error: `Transaction failed: ${executedTx.vm_status}`,
       };
     }
 
-    // Extract order ID from events (if Econia order was placed)
-    const orderId = extractOrderIdFromTransaction(executedTx);
-
-    // If we got an order ID, wait for fill
+    // Extract execution details from events
     let fillAmount: number | undefined;
-    if (orderId) {
-      console.log(`[Scheduler] Order placed: ${orderId}, waiting for fill...`);
+    
+    // Type guard for user transaction with events
+    const txWithEvents = executedTx as any;
+    if (txWithEvents.events && Array.isArray(txWithEvents.events)) {
+      const sipExecutedEvent = txWithEvents.events.find(
+        (event: any) =>
+          event.type.includes("SIPExecutionCompleted") ||
+          event.type.includes("SwapExecuted")
+      );
 
-      const subaccountAddr = getPrimarySubaccountAddress(user.walletAddress);
-      const fillEvent = await waitForOrderFill(subaccountAddr, orderId, 30000);
-
-      if (fillEvent) {
-        fillAmount = fillEvent.fill_amount;
-        console.log(`[Scheduler] Order filled: ${fillAmount} tokens received`);
-      } else {
-        console.warn(
-          `[Scheduler] Order ${orderId} did not fill within timeout`
-        );
+      if (sipExecutedEvent?.data) {
+        fillAmount = parseInt(sipExecutedEvent.data.amount_out || "0");
+        console.log(`[Scheduler] SIP executed, amount_out: ${fillAmount}`);
       }
     }
 
     return {
       success: true,
       txHash: executedTx.hash,
-      orderId: orderId ?? undefined,
       fillAmount,
     };
   } catch (error: any) {

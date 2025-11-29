@@ -1,0 +1,39 @@
+# Aptos CLI Configuration (contains private keys!)
+.aptos/
+
+# Environment variables (contains API keys, secrets)
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Convex deployment files
+.convex/deployment.json

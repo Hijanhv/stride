@@ -1,5 +1,6 @@
 module stride_contracts::access_control {
     use std::signer;
+    use std::vector;
     use std::error;
     use aptos_framework::event;
 

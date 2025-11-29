@@ -9,6 +9,7 @@
  */
 
 import type * as actions_aptos from "../actions/aptos.js";
+import type * as actions_decibel from "../actions/decibel.js";
 import type * as actions_geomi from "../actions/geomi.js";
 import type * as actions_photon from "../actions/photon.js";
 import type * as actions_razorpay from "../actions/razorpay.js";
@@ -18,8 +19,9 @@ import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_decibel from "../lib/decibel.js";
-import type * as lib_econia from "../lib/econia.js";
+import type * as lib_geomi from "../lib/geomi.js";
 import type * as lib_oracle from "../lib/oracle.js";
+import type * as lib_pyth from "../lib/pyth.js";
 import type * as oracle from "../oracle.js";
 import type * as receipts from "../receipts.js";
 import type * as rewards from "../rewards.js";
@@ -36,6 +38,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "actions/aptos": typeof actions_aptos;
+  "actions/decibel": typeof actions_decibel;
   "actions/geomi": typeof actions_geomi;
   "actions/photon": typeof actions_photon;
   "actions/razorpay": typeof actions_razorpay;
@@ -45,8 +48,9 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/decibel": typeof lib_decibel;
-  "lib/econia": typeof lib_econia;
+  "lib/geomi": typeof lib_geomi;
   "lib/oracle": typeof lib_oracle;
+  "lib/pyth": typeof lib_pyth;
   oracle: typeof oracle;
   receipts: typeof receipts;
   rewards: typeof rewards;

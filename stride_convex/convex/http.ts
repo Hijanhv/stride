@@ -314,158 +314,41 @@ http.route({
 });
 
 // ============================================================================
-// APTOS TRANSACTION WEBHOOKS (for on-chain events)
+// APTOS BLOCKCHAIN EVENT TRACKING
 // ============================================================================
 
 /**
- * Geomi Indexer Webhook
- * POST /geomi-webhook
+ * IMPORTANT: Geomi Event Indexing Architecture
  *
- * Called by Geomi No-Code Indexer when blockchain events occur
- * Handles real-time SIP execution notifications
+ * Geomi (Aptos Build) provides a No-Code Indexer that uses GraphQL for querying,
+ * NOT webhooks for pushing data. The correct integration pattern is:
+ *
+ * 1. Configure No-Code Indexer in Aptos Build Dashboard:
+ *    - Define event sources (contract events like SIPExecuted, VaultCreated)
+ *    - Map events to database tables/schemas
+ *    - Set up GraphQL endpoint
+ *
+ * 2. Poll Geomi GraphQL Endpoint:
+ *    - Use Convex cron job to poll every 5-10 seconds
+ *    - Query for new events since last poll
+ *    - Process events and update local database
+ *
+ * 3. Track Decibel Order Fills:
+ *    - Monitor Decibel's OrderFillEvent via Geomi
+ *    - Extract fill details (amount_out, price, timestamp)
+ *    - Update SIP statistics with actual fill data
+ *
+ * Event Tracking is implemented in:
+ * - stride_convex/convex/indexer/geomi-client.ts - GraphQL polling client
+ * - stride_convex/convex/indexer/order-fill-tracker.ts - Decibel fill tracking
+ * - stride_convex/convex/crons.ts - Scheduled polling jobs
+ *
+ * For webhook-based event tracking (if needed in future), consider:
+ * - Nodit.io - Provides webhook services for Aptos events
+ * - Custom indexer - Run own indexer with webhook notifications
  */
-http.route({
-  path: "/geomi-webhook",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    try {
-      // Validate webhook signature (if Geomi provides one)
-      const signature = request.headers.get("X-Geomi-Signature");
-      // TODO: Implement signature verification when Geomi provides it
 
-      const body = await request.json();
-      const { event_type, data } = body as {
-        event_type: string;
-        data: any;
-      };
-
-      console.log(`[Geomi Webhook] Event: ${event_type}`, data);
-
-      // Handle different event types
-      switch (event_type) {
-        case "sip_executed":
-          await handleSIPExecutedEvent(ctx, data);
-          break;
-
-        case "vault_created":
-          await handleVaultCreatedEvent(ctx, data);
-          break;
-
-        case "deposit":
-          await handleDepositEvent(ctx, data);
-          break;
-
-        case "sip_created":
-          await handleSIPCreatedEvent(ctx, data);
-          break;
-
-        default:
-          console.log(`[Geomi Webhook] Unknown event type: ${event_type}`);
-      }
-
-      return new Response(JSON.stringify({ status: "processed", event_type }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (error) {
-      console.error("[Geomi Webhook] Error:", error);
-
-      return new Response(
-        JSON.stringify({
-          error: "Failed to process webhook",
-          message: error instanceof Error ? error.message : "Unknown error",
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
-  }),
-});
-
-// ============================================================================
-// WEBHOOK EVENT HANDLERS
-// ============================================================================
-
-/**
- * Handle SIP Executed event from Geomi
- */
-async function handleSIPExecutedEvent(ctx: any, data: any) {
-  const {
-    vault_address,
-    sip_index,
-    amount_in,
-    amount_out,
-    transaction_hash,
-    timestamp,
-  } = data;
-
-  console.log(
-    `[Geomi] SIP Executed: Vault ${vault_address}, Index ${sip_index}, TxHash ${transaction_hash}`
-  );
-
-  // Find the SIP by vault address and index
-  // This requires querying our database to match vault_address to a user's SIP
-  // For now, we'll just log it - full implementation would:
-  // 1. Query SIPs table for matching vaultAddress and sipIndex
-  // 2. Update SIP statistics
-  // 3. Generate receipt
-  // 4. Trigger rewards
-
-  // TODO: Implement full SIP update logic
-  // const sip = await ctx.runQuery(internal.sips.getByVaultAndIndex, {
-  //   vaultAddress: vault_address,
-  //   sipIndex: sip_index,
-  // });
-}
-
-/**
- * Handle Vault Created event from Geomi
- */
-async function handleVaultCreatedEvent(ctx: any, data: any) {
-  const { user_address, vault_address, timestamp } = data;
-
-  console.log(
-    `[Geomi] Vault Created: User ${user_address}, Vault ${vault_address}`
-  );
-
-  // Update user record with vault address
-  // TODO: Implement vault address update
-  // const user = await ctx.runQuery(internal.users.getByWalletAddress, {
-  //   walletAddress: user_address,
-  // });
-  // if (user) {
-  //   await ctx.runMutation(internal.users.updateVaultAddress, {
-  //     userId: user._id,
-  //     vaultAddress: vault_address,
-  //   });
-  // }
-}
-
-/**
- * Handle Deposit event from Geomi
- */
-async function handleDepositEvent(ctx: any, data: any) {
-  const { vault_address, asset, amount, timestamp } = data;
-
-  console.log(
-    `[Geomi] Deposit: Vault ${vault_address}, Asset ${asset}, Amount ${amount}`
-  );
-
-  // Record deposit in transactions
-  // TODO: Implement deposit recording
-}
-
-/**
- * Handle SIP Created event from Geomi
- */
-async function handleSIPCreatedEvent(ctx: any, data: any) {
-  const { vault_address, sip_index, target_asset, amount, frequency } = data;
-
-  console.log(
-    `[Geomi] SIP Created: Vault ${vault_address}, Index ${sip_index}, Target ${target_asset}`
-  );
-
-  // Update SIP record with on-chain index
-  // TODO: Implement SIP index update
-}
+// Note: Placeholder webhook endpoint removed - Geomi uses GraphQL, not webhooks
+// See indexer/geomi-client.ts for proper implementation
 
 export default http;

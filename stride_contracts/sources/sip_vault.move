@@ -2,7 +2,7 @@ module stride_contracts::sip_vault {
     use std::signer;
     use std::vector;
     use std::option;
-    use std::string::{Self, String};
+    use std::string::String;
     use aptos_framework::object::{Self, Object, ExtendRef};
     use aptos_framework::fungible_asset::{Self, Metadata};
     use aptos_framework::primary_fungible_store;

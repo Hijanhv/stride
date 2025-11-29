@@ -51,20 +51,10 @@ interface AptosResource {
   data: Record<string, unknown>;
 }
 
-interface ViewFunctionResponse {
-  result: unknown[];
-}
-
 interface TransactionPayload {
   function: string;
   type_arguments: string[];
   arguments: unknown[];
-}
-
-interface GasStationResponse {
-  success: boolean;
-  txHash?: string;
-  error?: string;
 }
 
 // ============================================================================

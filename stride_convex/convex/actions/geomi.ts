@@ -4,6 +4,14 @@ import axios from "axios";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { action, internalAction } from "../_generated/server";
+import { APTOS_INDEXER_API_KEY, GEOMI_INDEXER_GRAPHQL_URL } from "../constants";
+import {
+  fetchRecentSIPExecutions,
+  fetchSIPExecutionsByVault,
+  fetchSwapExecutedEvents,
+  fetchSwapPendingEvents,
+  SIPExecutedEvent,
+} from "../lib/geomi";
 
 /**
  * Geomi Integration Module
@@ -19,9 +27,8 @@ import { action, internalAction } from "../_generated/server";
 
 function getConfig() {
   return {
-    INDEXER_GRAPHQL_URL:
-      process.env.GEOMI_INDEXER_URL || "https://indexer.geomi.dev/v1/graphql",
-    INDEXER_API_KEY: process.env.GEOMI_INDEXER_API_KEY || "",
+    INDEXER_GRAPHQL_URL: GEOMI_INDEXER_GRAPHQL_URL,
+    INDEXER_API_KEY: APTOS_INDEXER_API_KEY,
     GAS_STATION_API_KEY: process.env.GEOMI_GAS_STATION_API_KEY || "",
     FULL_NODE_API_KEY: process.env.APTOS_API_KEY || "",
     NETWORK: process.env.APTOS_NETWORK || "testnet",
@@ -32,32 +39,8 @@ function getConfig() {
 // TYPE DEFINITIONS
 // ============================================================================
 
-interface VaultCreatedEvent {
-  user_address: string;
-  vault_address: string;
-  timestamp: number;
-  transaction_version: number;
-}
-
-interface SIPCreatedEvent {
-  vault_address: string;
-  sip_index: number;
-  target_asset: string;
-  amount: number;
-  frequency: number;
-  timestamp: number;
-  transaction_version: number;
-}
-
-interface SIPExecutedEvent {
-  vault_address: string;
-  sip_index: number;
-  amount_in: number;
-  amount_out: number;
-  timestamp: number;
-  transaction_version: number;
-  transaction_hash: string;
-}
+// Re-using types from geomiClient where possible
+// Keeping local interfaces if they differ or for other events not yet in client
 
 interface DepositEvent {
   vault_address: string;
@@ -96,59 +79,23 @@ export const queryRecentSIPExecutions = action({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    const config = getConfig();
-
-    if (!config.INDEXER_API_KEY) {
-      console.warn("[Geomi] Indexer not configured, returning empty results");
-      return { success: true, executions: [] };
-    }
-
     try {
-      const query = `
-        query GetSIPExecutions($vaultAddress: String, $limit: Int) {
-          sip_executed_events(
-            where: { vault_address: { _eq: $vaultAddress } }
-            order_by: { timestamp: desc }
-            limit: $limit
-          ) {
-            vault_address
-            sip_index
-            amount_in
-            amount_out
-            timestamp
-            transaction_hash
-            transaction_version
-          }
-        }
-      `;
+      let events: SIPExecutedEvent[] = [];
+      const limit = args.limit || 50;
 
-      const response = await axios.post(
-        config.INDEXER_GRAPHQL_URL,
-        {
-          query,
-          variables: {
-            vaultAddress: args.vaultAddress,
-            limit: args.limit || 50,
-          },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.INDEXER_API_KEY}`,
-          },
-          timeout: 15000,
-        }
-      );
+      if (args.vaultAddress) {
+        events = await fetchSIPExecutionsByVault(args.vaultAddress, limit);
+      } else {
+        events = await fetchRecentSIPExecutions(limit);
+      }
 
-      const events = response.data?.data?.sip_executed_events || [];
-
-      const executions = events.map((event: SIPExecutedEvent) => ({
-        vaultAddress: event.vault_address,
-        sipIndex: event.sip_index,
-        amountIn: event.amount_in,
-        amountOut: event.amount_out,
-        timestamp: event.timestamp,
-        txHash: event.transaction_hash,
+      const executions = events.map((event) => ({
+        vaultAddress: event.vault_addr, // Note: geomi lib uses snake_case
+        sipIndex: event.sip_id,
+        amountIn: parseFloat(event.amount_in),
+        amountOut: parseFloat(event.amount_out),
+        timestamp: parseInt(event.timestamp),
+        txHash: event.transaction_version,
       }));
 
       return {
@@ -165,6 +112,7 @@ export const queryRecentSIPExecutions = action({
     }
   },
 });
+
 
 /**
  * Query vault events for a user
@@ -287,55 +235,54 @@ export const syncBlockchainEvents = internalAction({
     }
 
     try {
-      // Query recent SIP executions
-      const query = `
-        query GetRecentExecutions {
-          sip_executed_events(
-            order_by: { timestamp: desc }
-            limit: 100
-          ) {
-            vault_address
-            sip_index
-            amount_in
-            amount_out
-            timestamp
-            transaction_hash
-            transaction_version
-          }
-        }
-      `;
-
-      const response = await axios.post(
-        config.INDEXER_GRAPHQL_URL,
-        { query },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.INDEXER_API_KEY}`,
-          },
-          timeout: 15000,
-        }
-      );
-
-      const events = response.data?.data?.sip_executed_events || [];
+      // Query recent events
+      const [sipEvents, swapPendingEvents, swapExecutedEvents] = await Promise.all([
+        fetchRecentSIPExecutions(100),
+        fetchSwapPendingEvents("0", 100), // Using "0" as version to get all recent
+        fetchSwapExecutedEvents("0", 100),
+      ]);
 
       let syncedCount = 0;
 
-      // Process each event
-      for (const event of events) {
-        // Check if transaction already exists
+      // Process SIP Executed events
+      for (const event of sipEvents) {
+        const txHash = event.transaction_hash || event.transaction_version;
         const exists = await ctx.runQuery(internal.transactions.txHashExists, {
-          txHash: event.transaction_hash,
+          txHash,
         });
 
         if (!exists) {
-          // Find the SIP by vault address and index
-          // This would require additional logic to map vault address to user/SIP
-          // For now, we'll log it
-          console.log(
-            `[Geomi] New SIP execution detected: ${event.transaction_hash}`
-          );
+          console.log(`[Geomi] New SIP execution detected: ${txHash}`);
           syncedCount++;
+          // TODO: Store event in DB
+        }
+      }
+
+      // Process Swap Pending events
+      for (const event of swapPendingEvents) {
+        const txHash = event.transaction_version; // Swap events might not have hash in interface
+        const exists = await ctx.runQuery(internal.transactions.txHashExists, {
+          txHash,
+        });
+
+        if (!exists) {
+          console.log(`[Geomi] New Swap Pending detected: ${txHash}`);
+          syncedCount++;
+          // TODO: Trigger swap execution
+        }
+      }
+
+      // Process Swap Executed events
+      for (const event of swapExecutedEvents) {
+        const txHash = event.transaction_version;
+        const exists = await ctx.runQuery(internal.transactions.txHashExists, {
+          txHash,
+        });
+
+        if (!exists) {
+          console.log(`[Geomi] New Swap Executed detected: ${txHash}`);
+          syncedCount++;
+          // TODO: Update SIP stats
         }
       }
 
