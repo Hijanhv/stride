@@ -1,249 +1,309 @@
 /**
- * Environment Configuration Constants
+ * Stride Constants
  *
- * Centralized configuration for:
- * - Aptos Network (Testnet/Mainnet)
- * - Photon API
- * - Contract Addresses
- *
- * All values can be overridden via environment variables.
+ * Central configuration for all API keys, contract addresses, and settings.
+ * These should be set via environment variables in production.
  */
 
 // ============================================================================
-// ENVIRONMENT DETECTION
+// NETWORK CONFIGURATION
 // ============================================================================
 
-export const ENVIRONMENT = process.env.ENVIRONMENT || "development";
-export const IS_PRODUCTION = ENVIRONMENT === "production";
-export const IS_DEVELOPMENT = ENVIRONMENT === "development";
-export const IS_STAGING = ENVIRONMENT === "staging";
+export const NETWORK = process.env.APTOS_NETWORK || "testnet";
+export const IS_TESTNET = NETWORK === "testnet";
+export const IS_MAINNET = NETWORK === "mainnet";
 
 // ============================================================================
-// APTOS NETWORK CONFIGURATION
+// APTOS API CONFIGURATION (Geomi/Aptos Build)
 // ============================================================================
 
-/**
- * Aptos Network Selection
- * - testnet: For development and hackathons
- * - mainnet: For production
- * - devnet: For experimental features (resets frequently)
- */
-export const APTOS_NETWORK =
-  process.env.APTOS_NETWORK || (IS_PRODUCTION ? "mainnet" : "testnet");
+// Full Node API Key from Aptos Build
+export const APTOS_API_KEY = process.env.APTOS_API_KEY || "";
 
-/**
- * Aptos RPC Endpoints
- */
-export const APTOS_RPC_URLS = {
-  mainnet: "https://fullnode.mainnet.aptoslabs.com/v1",
-  testnet: "https://fullnode.testnet.aptoslabs.com/v1",
-  devnet: "https://fullnode.devnet.aptoslabs.com/v1",
-} as const;
+// Gas Station API Key for sponsoring transactions
+export const APTOS_GAS_STATION_API_KEY =
+  process.env.APTOS_GAS_STATION_API_KEY || "";
 
-export const APTOS_RPC_URL =
-  process.env.APTOS_RPC_URL ||
-  APTOS_RPC_URLS[APTOS_NETWORK as keyof typeof APTOS_RPC_URLS] ||
-  APTOS_RPC_URLS.testnet;
+// No-Code Indexer API Key
+export const APTOS_INDEXER_API_KEY = process.env.APTOS_INDEXER_API_KEY || "";
 
-/**
- * Aptos Explorer URLs
- */
-export const APTOS_EXPLORER_URLS = {
-  mainnet: "https://explorer.aptoslabs.com",
-  testnet: "https://explorer.aptoslabs.com?network=testnet",
-  devnet: "https://explorer.aptoslabs.com?network=devnet",
-} as const;
+// RPC URLs
+export const APTOS_RPC_URL = IS_MAINNET
+  ? "https://api.mainnet.aptoslabs.com/v1"
+  : "https://api.testnet.aptoslabs.com/v1";
 
-export const APTOS_EXPLORER_URL =
-  APTOS_EXPLORER_URLS[APTOS_NETWORK as keyof typeof APTOS_EXPLORER_URLS] ||
-  APTOS_EXPLORER_URLS.testnet;
+export const APTOS_FULLNODE_URL = IS_MAINNET
+  ? "https://fullnode.mainnet.aptoslabs.com/v1"
+  : "https://fullnode.testnet.aptoslabs.com/v1";
+
+export const APTOS_INDEXER_URL = process.env.APTOS_INDEXER_URL || "";
+
+// Geomi Indexer GraphQL endpoint
+export const GEOMI_INDEXER_GRAPHQL_URL =
+  process.env.GEOMI_INDEXER_GRAPHQL_URL || "";
+
+// Webhook URL for Geomi to send events (configure in Geomi dashboard)
+export const GEOMI_WEBHOOK_URL = process.env.GEOMI_WEBHOOK_URL || "";
+
+// ============================================================================
+// DECIBEL CLOB CONFIGURATION
+// ============================================================================
+
+// Decibel contract addresses
+// Decibel contract addresses (Defaults to Econia Testnet)
+// Source: Econia Docs (Testnet)
+export const DECIBEL_CONFIG = {
+  PACKAGE_ADDRESS: process.env.DECIBEL_PACKAGE_ADDRESS || "0xc0deb00c9154b6b64db01e277648f5bd694cecc703fd0d9053fb95a58b292b17", // Econia Testnet
+  MARKET_REGISTRY: process.env.DECIBEL_MARKET_REGISTRY || "0xc0deb00c9154b6b64db01e277648f5bd694cecc703fd0d9053fb95a58b292b17",
+  USDC_APT_MARKET_ID: process.env.DECIBEL_USDC_APT_MARKET_ID || "0x1::aptos_coin::AptosCoin-0x1::aptos_coin::AptosCoin", // Placeholder
+  MARKETS: {
+    USDC_APT: process.env.DECIBEL_USDC_APT_MARKET_ID || "0x1::aptos_coin::AptosCoin-0x1::aptos_coin::AptosCoin",
+  },
+  API_URL: "https://api.testnet.econia.dev/v1",
+};
+
+// Validation: Warn instead of fail for missing secrets in dev
+if (!process.env.DECIBEL_PACKAGE_ADDRESS) {
+  console.warn("⚠️ DECIBEL_PACKAGE_ADDRESS is missing. Using Econia Testnet defaults.");
+}
+
+// ============================================================================
+// SMART CONTRACT ADDRESSES
+// ============================================================================
+
+// Deployed contract address
+export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "";
+
+// Module names
+export const MODULES = {
+  SIP_VAULT: `${CONTRACT_ADDRESS}::sip_vault`,
+  EXECUTOR: `${CONTRACT_ADDRESS}::executor`,
+  CLOB_MARKET: `${CONTRACT_ADDRESS}::clob_market`,
+  REWARDS: `${CONTRACT_ADDRESS}::rewards`,
+};
+
+// Entry functions
+export const ENTRY_FUNCTIONS = {
+  // SIP Vault
+  CREATE_VAULT: `${MODULES.SIP_VAULT}::create_vault`,
+  DEPOSIT: `${MODULES.SIP_VAULT}::deposit`,
+  CREATE_SIP: `${MODULES.SIP_VAULT}::create_sip`,
+  UPDATE_SIP_AMOUNT: `${MODULES.SIP_VAULT}::update_sip_amount`,
+  PAUSE_SIP: `${MODULES.SIP_VAULT}::pause_sip`,
+  RESUME_SIP: `${MODULES.SIP_VAULT}::resume_sip`,
+  CANCEL_SIP: `${MODULES.SIP_VAULT}::cancel_sip`,
+  WITHDRAW: `${MODULES.SIP_VAULT}::withdraw`,
+
+  // Executor
+  EXECUTE_SIP: `${MODULES.EXECUTOR}::execute_sip`,
+  EXECUTE_BATCH: `${MODULES.EXECUTOR}::execute_batch`,
+  EXECUTE_SIP_WITH_SLIPPAGE: `${MODULES.EXECUTOR}::execute_sip_with_slippage`,
+
+  // Rewards
+  REGISTER_REWARDS: `${MODULES.REWARDS}::register`,
+  REDEEM_POINTS: `${MODULES.REWARDS}::redeem_points`,
+};
+
+// View functions
+export const VIEW_FUNCTIONS = {
+  GET_DCA_STATISTICS: `${MODULES.SIP_VAULT}::get_dca_statistics`,
+  GET_VAULT_OWNER: `${MODULES.SIP_VAULT}::get_vault_owner`,
+  GET_SIP_COUNT: `${MODULES.SIP_VAULT}::get_sip_count`,
+  GET_VAULT_STATS: `${MODULES.SIP_VAULT}::get_vault_stats`,
+  IS_SIP_DUE: `${MODULES.SIP_VAULT}::is_sip_due`,
+  GET_SIP_DETAILS: `${MODULES.SIP_VAULT}::get_sip_details`,
+  GET_POINTS: `${MODULES.REWARDS}::get_points`,
+  GET_REWARD_STATS: `${MODULES.REWARDS}::get_reward_stats`,
+  GET_TIER: `${MODULES.REWARDS}::get_tier`,
+  IS_REGISTERED: `${MODULES.REWARDS}::is_registered`,
+};
 
 // ============================================================================
 // PHOTON API CONFIGURATION
 // ============================================================================
 
-/**
- * Photon API Base URLs
- * - Stage: For testing/hackathons (Aptos Testnet)
- * - Production: For production apps (Aptos Mainnet)
- */
-export const PHOTON_API_URLS = {
-  stage: "https://stage-api.getstan.app/identity-service/api/v1",
-  production: "https://api.getstan.app/identity-service/api/v1",
-} as const;
+export const PHOTON_CONFIG = {
+  BASE_URL: IS_MAINNET
+    ? "https://api.getstan.app/identity-service/api/v1"
+    : "https://stage-api.getstan.app/identity-service/api/v1",
 
-export const PHOTON_BASE_URL =
-  process.env.PHOTON_BASE_URL ||
-  (IS_PRODUCTION ? PHOTON_API_URLS.production : PHOTON_API_URLS.stage);
+  API_KEY: process.env.PHOTON_API_KEY || "",
 
-/**
- * Photon API Key
- */
-export const PHOTON_API_KEY =
-  process.env.PHOTON_API_KEY ||
-  "7bc5d06eb53ad73716104742c7e8a5377da9fe8156378dcfebfb8253da4e8800";
+  JWT_SECRET: process.env.PHOTON_JWT_SECRET || "",
 
-/**
- * JWT Secret for Photon authentication
- */
-export const PHOTON_JWT_SECRET =
-  process.env.PHOTON_JWT_SECRET || "qwertyuiopasdfghjklzxcvbnm123456";
-
-/**
- * Photon Campaign ID
- */
-export const PHOTON_CAMPAIGN_ID =
-  process.env.PHOTON_CAMPAIGN_ID || "ea3bcaca-9ce4-4b54-b803-8b9be1f142ba";
+  CAMPAIGN_ID: process.env.PHOTON_CAMPAIGN_ID || "",
+};
 
 // ============================================================================
-// PHOTON SMART CONTRACTS (APTOS TESTNET)
+// WALLET CONFIGURATION
 // ============================================================================
 
-/**
- * Photon Smart Contract Addresses on Aptos Testnet
- * These are used for on-chain verification and balance checking
- */
-export const PHOTON_CONTRACTS = {
-  // User registration and identity management
-  PhotonUsersModule:
-    "0x1bd8cf2a60a2e3ac5f31541ba1b180d0b575a63a10fb0d0edbfc8ab99bb4b0b3",
-
-  // Campaign rewards and token distribution
-  PhotonCampaignManagerModule:
-    "0x82373f661e43dae91d3bf13b9ec4bbed96be0348531628a8c0fe1099198f6bf1",
-
-  // Event verification
-  PhotonVerifier:
-    "0x2e69240f3c02ce1932250aa0b52c5c989b16b710ce01039a0741192c4f08f5e9",
-} as const;
+export const WALLET_CONFIG = {
+  // Private key for the scheduler bot that executes SIPs
+  SCHEDULER_PRIVATE_KEY: process.env.SCHEDULER_PRIVATE_KEY || "",
+};
 
 // ============================================================================
-// RUPAYA RAIL CONTRACT ADDRESSES
+// RAZORPAY CONFIGURATION (UPI Payments)
 // ============================================================================
 
-/**
- * Rupaya Rail Smart Contract Addresses
- * Update these after deploying contracts
- */
-export const RUPAYA_CONTRACTS = {
-  // SIP Vault contract for managing investments
-  SIPVault: process.env.SIP_VAULT_ADDRESS || "",
-
-  // Executor contract for batch SIP processing
-  Executor: process.env.EXECUTOR_ADDRESS || "",
-
-  // CLOB Market contract
-  CLOBMarket: process.env.CLOB_MARKET_ADDRESS || "",
-
-  // Rewards contract
-  Rewards: process.env.REWARDS_ADDRESS || "",
-} as const;
+export const RAZORPAY_CONFIG = {
+  KEY_ID: process.env.RAZORPAY_KEY_ID || "",
+  KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
+  WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
+  // Test mode credentials (for development)
+  TEST_KEY_ID: process.env.RAZORPAY_TEST_KEY_ID || "",
+  TEST_KEY_SECRET: process.env.RAZORPAY_TEST_KEY_SECRET || "",
+};
 
 // ============================================================================
-// TOKEN ADDRESSES
+// SHELBY CONFIGURATION (Receipt Storage)
 // ============================================================================
 
-/**
- * Common token addresses on Aptos
- */
-export const TOKEN_ADDRESSES = {
-  // Native APT coin
-  APT: "0x1::aptos_coin::AptosCoin",
-
-  // PHOTON token (from Photon campaign)
-  PHOTON: PHOTON_CONTRACTS.PhotonCampaignManagerModule,
-} as const;
+export const SHELBY_CONFIG = {
+  API_URL: process.env.SHELBY_API_URL || "https://api.shelby.dev/v1",
+  API_KEY: process.env.SHELBY_API_KEY || "",
+  BUCKET_NAME: process.env.SHELBY_BUCKET_NAME || "stride-receipts",
+};
 
 // ============================================================================
-// TIMING CONSTANTS
+// TOKEN CONFIGURATION
 // ============================================================================
 
-/**
- * Time intervals in milliseconds
- */
-export const TIME = {
-  SECOND: 1000,
-  MINUTE: 60 * 1000,
-  HOUR: 60 * 60 * 1000,
-  DAY: 24 * 60 * 60 * 1000,
-  WEEK: 7 * 24 * 60 * 60 * 1000,
-  MONTH: 30 * 24 * 60 * 60 * 1000, // Approximate
-} as const;
+// Test USDC on Aptos Testnet (Moon Coin for testing)
+export const TOKENS = {
+  // Native APT
+  APT: {
+    symbol: "APT",
+    name: "Aptos",
+    decimals: 8,
+    address: "0x1::aptos_coin::AptosCoin",
+    metadata: "0x1::aptos_coin::AptosCoin",
+  },
 
-/**
- * SIP frequency intervals
- */
-export const SIP_INTERVALS = {
-  daily: TIME.DAY,
-  weekly: TIME.WEEK,
-  monthly: TIME.MONTH,
-} as const;
+  // Test USDC (using Moon Coin as placeholder on testnet)
+  USDC: {
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    // Testnet faucet coin or mock USDC address
+    address: "0x1::aptos_coin::AptosCoin", // Using APT as placeholder
+    metadata: "0x1::aptos_coin::AptosCoin",
+  },
 
-// ============================================================================
-// LIMITS AND DEFAULTS
-// ============================================================================
-
-/**
- * Application limits
- */
-export const LIMITS = {
-  // Minimum SIP amount (in smallest unit)
-  MIN_SIP_AMOUNT: 100,
-
-  // Maximum SIP amount
-  MAX_SIP_AMOUNT: 1000000,
-
-  // Maximum active SIPs per user
-  MAX_ACTIVE_SIPS: 10,
-
-  // Token refresh buffer (refresh 5 minutes before expiry)
-  TOKEN_REFRESH_BUFFER: 5 * TIME.MINUTE,
-} as const;
+  // Photon token (from campaign rewards)
+  PHOTON: {
+    symbol: "PHOTON",
+    name: "Photon Token",
+    decimals: 8,
+    address: "", // Set after campaign is deployed
+    metadata: "",
+  },
+};
 
 // ============================================================================
-// ERROR MESSAGES
+// SIP CONFIGURATION
 // ============================================================================
 
-export const ERRORS = {
-  USER_NOT_FOUND: "User not found",
-  SIP_NOT_FOUND: "SIP not found",
-  INVALID_PHONE: "Invalid phone number",
-  INVALID_AMOUNT: "Invalid amount",
-  WALLET_NOT_FOUND: "Wallet not found",
-  PHOTON_NOT_REGISTERED: "User not registered with Photon",
-  TOKEN_EXPIRED: "Access token expired",
-  INSUFFICIENT_BALANCE: "Insufficient balance",
-  NETWORK_ERROR: "Network error occurred",
-} as const;
+export const SIP_CONFIG = {
+  // Minimum amounts
+  MIN_AMOUNT_INR: 100, // ₹100 minimum
+  MIN_AMOUNT_USDC: 1000000, // 1 USDC (6 decimals)
+
+  // Frequency options (in seconds)
+  FREQUENCIES: {
+    HOURLY: 3600, // 1 hour (for testing)
+    DAILY: 86400, // 24 hours
+    WEEKLY: 604800, // 7 days
+    BIWEEKLY: 1209600, // 14 days
+    MONTHLY: 2592000, // 30 days
+  },
+
+  // Reward rates (points per unit invested)
+  REWARD_RATE: 0.1, // 10% in points
+
+  // Streak bonuses
+  STREAK_BONUS_PER_DAY: 10,
+  MAX_STREAK_BONUS: 100,
+};
 
 // ============================================================================
-// HELPER FUNCTIONS
+// UPI CONFIGURATION
 // ============================================================================
 
-/**
- * Get explorer URL for a transaction
- */
-export function getTransactionExplorerUrl(txHash: string): string {
-  return `${APTOS_EXPLORER_URL}/txn/${txHash}`;
-}
+export const UPI_CONFIG = {
+  // UPI VPA for receiving payments
+  VPA: process.env.UPI_VPA || "",
 
-/**
- * Get explorer URL for an account
- */
-export function getAccountExplorerUrl(address: string): string {
-  return `${APTOS_EXPLORER_URL}/account/${address}`;
-}
+  // Merchant details
+  MERCHANT_NAME: "Stride",
+  MERCHANT_CODE: "5411", // Financial services
 
-/**
- * Check if we're running on testnet
- */
-export function isTestnet(): boolean {
-  return APTOS_NETWORK === "testnet";
-}
+  // Payment limits
+  MIN_AMOUNT: 100, // ₹100
+  MAX_AMOUNT: 100000, // ₹1,00,000
+};
 
-/**
- * Check if we're running on mainnet
- */
-export function isMainnet(): boolean {
-  return APTOS_NETWORK === "mainnet";
-}
+// ============================================================================
+// GAS STATION CONFIGURATION
+// ============================================================================
+
+export const GAS_STATION_CONFIG = {
+  // Functions to sponsor
+  SPONSORED_FUNCTIONS: [
+    `${CONTRACT_ADDRESS}::sip_vault::create_vault`,
+    `${CONTRACT_ADDRESS}::sip_vault::deposit`,
+    `${CONTRACT_ADDRESS}::sip_vault::create_sip`,
+    `${CONTRACT_ADDRESS}::sip_vault::update_sip_amount`,
+    `${CONTRACT_ADDRESS}::sip_vault::pause_sip`,
+    `${CONTRACT_ADDRESS}::sip_vault::resume_sip`,
+    `${CONTRACT_ADDRESS}::executor::execute_sip`,
+    `${CONTRACT_ADDRESS}::rewards::register`,
+  ],
+
+  // Max gas per transaction
+  MAX_GAS_AMOUNT: 10000,
+
+  // Gas unit price
+  GAS_UNIT_PRICE: 100,
+};
+
+// ============================================================================
+// RATE LIMITING
+// ============================================================================
+
+export const RATE_LIMITS = {
+  // API calls per minute
+  API_CALLS_PER_MINUTE: 100,
+
+  // SIP executions per hour
+  SIP_EXECUTIONS_PER_HOUR: 60,
+
+  // Reward claims per day
+  REWARD_CLAIMS_PER_DAY: 10,
+};
+
+// ============================================================================
+// ERROR CODES
+// ============================================================================
+
+export const ERROR_CODES = {
+  // User errors
+  USER_NOT_FOUND: "USER_NOT_FOUND",
+  USER_NOT_REGISTERED: "USER_NOT_REGISTERED",
+  INVALID_PHONE: "INVALID_PHONE",
+
+  // SIP errors
+  SIP_NOT_FOUND: "SIP_NOT_FOUND",
+  SIP_NOT_DUE: "SIP_NOT_DUE",
+  INSUFFICIENT_BALANCE: "INSUFFICIENT_BALANCE",
+
+  // Transaction errors
+  TX_FAILED: "TX_FAILED",
+  TX_TIMEOUT: "TX_TIMEOUT",
+
+  // API errors
+  PHOTON_ERROR: "PHOTON_ERROR",
+  APTOS_ERROR: "APTOS_ERROR",
+  SHELBY_ERROR: "SHELBY_ERROR",
+};

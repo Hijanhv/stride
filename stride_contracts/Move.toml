@@ -5,6 +5,7 @@ authors = []
 
 [addresses]
 stride_contracts = "0xcafe"
+Decibel = "0xb8a5788314451ce4d2fbbad32e1bad88d4184b73943b7fe5166eab93cf1a5a95"
 
 [dev-addresses]
 
@@ -12,5 +13,7 @@ stride_contracts = "0xcafe"
 git = "https://github.com/aptos-labs/aptos-framework.git"
 rev = "mainnet"
 subdir = "aptos-framework"
+
+
 
 [dev-dependencies]

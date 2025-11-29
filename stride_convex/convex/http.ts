@@ -162,6 +162,118 @@ http.route({
 });
 
 // ============================================================================
+// RAZORPAY WEBHOOKS
+// ============================================================================
+
+/**
+ * Razorpay Payment Webhook
+ * POST /razorpay-webhook
+ *
+ * Called by Razorpay when payment events occur (payment.captured, payment.failed, etc.)
+ */
+http.route({
+  path: "/razorpay-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const signature = request.headers.get("X-Razorpay-Signature");
+      const body = await request.text();
+
+      // TODO: Verify webhook signature using crypto.createHmac
+      // For now, we'll process all webhooks (add verification in production)
+
+      const event = JSON.parse(body);
+      console.log(`[Razorpay] Event: ${event.event}`);
+
+      // Handle different event types
+      switch (event.event) {
+        case "payment.captured":
+          await handlePaymentCaptured(ctx, event.payload.payment.entity);
+          break;
+
+        case "payment.failed":
+          await handlePaymentFailed(ctx, event.payload.payment.entity);
+          break;
+
+        case "order.paid":
+          console.log("[Razorpay] Order paid:", event.payload.order.entity.id);
+          break;
+
+        default:
+          console.log(`[Razorpay] Unhandled event: ${event.event}`);
+      }
+
+      return new Response(JSON.stringify({ status: "processed" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("[Razorpay Webhook] Error:", error);
+
+      return new Response(
+        JSON.stringify({
+          error: "Failed to process webhook",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * Handle successful payment
+ */
+async function handlePaymentCaptured(ctx: any, payment: any) {
+  const { id, amount, notes, vpa } = payment;
+  const userId = notes?.userId;
+
+  if (!userId) {
+    console.error("[Razorpay] Payment missing userId in notes:", id);
+    return;
+  }
+
+  console.log(
+    `[Razorpay] Payment captured: ${id}, Amount: ₹${amount / 100}, User: ${userId}`
+  );
+
+  // Record deposit (amount in paise, convert to rupees)
+  await ctx.runMutation(internal.transactions.recordDeposit, {
+    userId,
+    amount: amount / 100, // Convert paise to rupees
+    txHash: id,
+    tokenSymbol: "INR",
+  });
+
+  console.log(`[Razorpay] Deposit recorded for user ${userId}`);
+}
+
+/**
+ * Handle failed payment
+ */
+async function handlePaymentFailed(ctx: any, payment: any) {
+  const { id, amount, notes, error_description } = payment;
+  const userId = notes?.userId;
+
+  if (!userId) {
+    console.error("[Razorpay] Failed payment missing userId:", id);
+    return;
+  }
+
+  console.log(
+    `[Razorpay] Payment failed: ${id}, User: ${userId}, Error: ${error_description}`
+  );
+
+  // Record failed deposit
+  await ctx.runMutation(internal.transactions.recordFailedDeposit, {
+    userId,
+    amount: amount / 100,
+    txHash: id,
+    errorMessage: error_description || "Payment failed",
+  });
+}
+
+// ============================================================================
 // PHOTON CALLBACKS (if needed)
 // ============================================================================
 
@@ -206,39 +318,154 @@ http.route({
 // ============================================================================
 
 /**
- * Aptos Transaction Webhook
- * POST /aptos-webhook
+ * Geomi Indexer Webhook
+ * POST /geomi-webhook
  *
- * Could be called by an indexer service when relevant on-chain events occur
+ * Called by Geomi No-Code Indexer when blockchain events occur
+ * Handles real-time SIP execution notifications
  */
 http.route({
-  path: "/aptos-webhook",
+  path: "/geomi-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
+      // Validate webhook signature (if Geomi provides one)
+      const signature = request.headers.get("X-Geomi-Signature");
+      // TODO: Implement signature verification when Geomi provides it
+
       const body = await request.json();
+      const { event_type, data } = body as {
+        event_type: string;
+        data: any;
+      };
 
-      console.log("[Aptos Webhook] Received:", JSON.stringify(body));
+      console.log(`[Geomi Webhook] Event: ${event_type}`, data);
 
-      // TODO: Process Aptos blockchain events
-      // This could handle:
-      // - SIP execution confirmations
-      // - Token transfer events
-      // - Vault deposit confirmations
+      // Handle different event types
+      switch (event_type) {
+        case "sip_executed":
+          await handleSIPExecutedEvent(ctx, data);
+          break;
 
-      return new Response(JSON.stringify({ status: "received" }), {
+        case "vault_created":
+          await handleVaultCreatedEvent(ctx, data);
+          break;
+
+        case "deposit":
+          await handleDepositEvent(ctx, data);
+          break;
+
+        case "sip_created":
+          await handleSIPCreatedEvent(ctx, data);
+          break;
+
+        default:
+          console.log(`[Geomi Webhook] Unknown event type: ${event_type}`);
+      }
+
+      return new Response(JSON.stringify({ status: "processed", event_type }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     } catch (error) {
-      console.error("[Aptos Webhook] Error:", error);
+      console.error("[Geomi Webhook] Error:", error);
 
       return new Response(
-        JSON.stringify({ error: "Failed to process webhook" }),
+        JSON.stringify({
+          error: "Failed to process webhook",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
   }),
 });
+
+// ============================================================================
+// WEBHOOK EVENT HANDLERS
+// ============================================================================
+
+/**
+ * Handle SIP Executed event from Geomi
+ */
+async function handleSIPExecutedEvent(ctx: any, data: any) {
+  const {
+    vault_address,
+    sip_index,
+    amount_in,
+    amount_out,
+    transaction_hash,
+    timestamp,
+  } = data;
+
+  console.log(
+    `[Geomi] SIP Executed: Vault ${vault_address}, Index ${sip_index}, TxHash ${transaction_hash}`
+  );
+
+  // Find the SIP by vault address and index
+  // This requires querying our database to match vault_address to a user's SIP
+  // For now, we'll just log it - full implementation would:
+  // 1. Query SIPs table for matching vaultAddress and sipIndex
+  // 2. Update SIP statistics
+  // 3. Generate receipt
+  // 4. Trigger rewards
+
+  // TODO: Implement full SIP update logic
+  // const sip = await ctx.runQuery(internal.sips.getByVaultAndIndex, {
+  //   vaultAddress: vault_address,
+  //   sipIndex: sip_index,
+  // });
+}
+
+/**
+ * Handle Vault Created event from Geomi
+ */
+async function handleVaultCreatedEvent(ctx: any, data: any) {
+  const { user_address, vault_address, timestamp } = data;
+
+  console.log(
+    `[Geomi] Vault Created: User ${user_address}, Vault ${vault_address}`
+  );
+
+  // Update user record with vault address
+  // TODO: Implement vault address update
+  // const user = await ctx.runQuery(internal.users.getByWalletAddress, {
+  //   walletAddress: user_address,
+  // });
+  // if (user) {
+  //   await ctx.runMutation(internal.users.updateVaultAddress, {
+  //     userId: user._id,
+  //     vaultAddress: vault_address,
+  //   });
+  // }
+}
+
+/**
+ * Handle Deposit event from Geomi
+ */
+async function handleDepositEvent(ctx: any, data: any) {
+  const { vault_address, asset, amount, timestamp } = data;
+
+  console.log(
+    `[Geomi] Deposit: Vault ${vault_address}, Asset ${asset}, Amount ${amount}`
+  );
+
+  // Record deposit in transactions
+  // TODO: Implement deposit recording
+}
+
+/**
+ * Handle SIP Created event from Geomi
+ */
+async function handleSIPCreatedEvent(ctx: any, data: any) {
+  const { vault_address, sip_index, target_asset, amount, frequency } = data;
+
+  console.log(
+    `[Geomi] SIP Created: Vault ${vault_address}, Index ${sip_index}, Target ${target_asset}`
+  );
+
+  // Update SIP record with on-chain index
+  // TODO: Implement SIP index update
+}
 
 export default http;

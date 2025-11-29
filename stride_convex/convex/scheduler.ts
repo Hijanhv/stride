@@ -1,3 +1,10 @@
+import {
+  Aptos,
+  AptosConfig,
+  Ed25519Account,
+  Ed25519PrivateKey,
+  Network,
+} from "@aptos-labs/ts-sdk";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -6,6 +13,13 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
+import {
+  APTOS_FULLNODE_URL,
+  DECIBEL_CONFIG,
+  IS_MAINNET,
+  WALLET_CONFIG,
+} from "./constants";
+import { buildPlaceOrderPayload } from "./lib/decibel";
 
 /**
  * SIP Scheduler Module
@@ -23,7 +37,7 @@ type SIPData = {
   _creationTime: number;
   userId: Id<"users">;
   amount: number;
-  frequency: "daily" | "weekly" | "monthly";
+  frequency: "hourly" | "daily" | "weekly" | "biweekly" | "monthly";
   tokenAddress?: string;
   tokenSymbol?: string;
   vaultAddress?: string;
@@ -66,8 +80,10 @@ export const getDueSIPs = internalQuery({
       userId: v.id("users"),
       amount: v.number(),
       frequency: v.union(
+        v.literal("hourly"),
         v.literal("daily"),
         v.literal("weekly"),
+        v.literal("biweekly"),
         v.literal("monthly")
       ),
       tokenAddress: v.optional(v.string()),
@@ -257,6 +273,7 @@ export const updateTransactionStatus = internalMutation({
  * Execute SIP transaction on Aptos blockchain
  * TODO: Integrate with Aptos SDK for real transactions
  */
+
 async function executeSIPOnChain(
   sip: SIPData,
   user: NonNullable<UserForSIP>
@@ -266,20 +283,65 @@ async function executeSIPOnChain(
     return { success: false, error: "User wallet address not found" };
   }
 
-  // TODO: Implement actual Aptos transaction
-  // This would:
-  // 1. Build transaction payload to call the executor contract
-  // 2. Sign transaction using Photon's sponsored transaction flow
-  // 3. Submit to Aptos network
-  // 4. Wait for confirmation
 
-  // Simulate a transaction hash for testing
-  const mockTxHash = `0x${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`;
 
-  return {
-    success: true,
-    txHash: mockTxHash,
-  };
+  try {
+    // Initialize Aptos Client
+    const config = new AptosConfig({
+      network: IS_MAINNET ? Network.MAINNET : Network.TESTNET,
+      fullnode: APTOS_FULLNODE_URL,
+    });
+    const aptos = new Aptos(config);
+
+    // Initialize Scheduler Account
+    if (!WALLET_CONFIG.SCHEDULER_PRIVATE_KEY) {
+      throw new Error("SCHEDULER_PRIVATE_KEY not configured");
+    }
+    const privateKey = new Ed25519PrivateKey(WALLET_CONFIG.SCHEDULER_PRIVATE_KEY);
+    const schedulerAccount = new Ed25519Account({ privateKey });
+
+    // Build Transaction Payload
+    // Note: We use the single order entrypoint as per instructions
+    const payload = buildPlaceOrderPayload({
+      marketName: DECIBEL_CONFIG.USDC_APT_MARKET_ID,
+      price: 0, // Market order (0 price usually implies market, or specific logic needed)
+      // TODO: Fetch real price if limit order, or use oracle.
+      // For SIP, we might want a market order or a limit order with slippage.
+      // The current instruction says "place_order_to_subaccount".
+      // We'll assume 0 price = market order for now, or use a fetch.
+      size: sip.amount * 1000000, // Assuming amount is in USDC (6 decimals) -> check token decimals
+      isBuy: true,
+      userAddr: user.walletAddress,
+    });
+
+    // Build and Submit Transaction
+    const transaction = await aptos.transaction.build.simple({
+      sender: schedulerAccount.accountAddress,
+      data: payload as any,
+    });
+
+    const pendingTx = await aptos.signAndSubmitTransaction({
+      signer: schedulerAccount,
+      transaction,
+    });
+
+    // Wait for confirmation
+    const executedTx = await aptos.waitForTransaction({
+      transactionHash: pendingTx.hash,
+    });
+
+    return {
+      success: executedTx.success,
+      txHash: executedTx.hash,
+      error: executedTx.success ? undefined : "Transaction failed on-chain",
+    };
+  } catch (error: any) {
+    console.error("[Scheduler] On-chain execution failed:", error);
+    return {
+      success: false,
+      error: error.message || "Unknown error during execution",
+    };
+  }
 }
 
 // ============================================================================

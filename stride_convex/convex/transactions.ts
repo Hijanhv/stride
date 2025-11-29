@@ -230,6 +230,43 @@ export const recordDeposit = internalMutation({
 });
 
 /**
+ * Record deposit and get vault address (for Treasury)
+ */
+export const recordDepositAndGetVault = internalMutation({
+  args: {
+    userId: v.id("users"),
+    amount: v.number(),
+    paymentId: v.string(),
+  },
+  returns: v.object({
+    transactionId: v.id("transactions"),
+    vaultAddress: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    
+    // 1. Record Transaction
+    const transactionId = await ctx.db.insert("transactions", {
+      userId: args.userId,
+      type: "deposit",
+      amount: args.amount,
+      tokenSymbol: "INR",
+      status: "processing", // Processing until Treasury funds it
+      txHash: args.paymentId, // Use Razorpay ID as hash initially
+      createdAt: now,
+    });
+
+    // 2. Get User's Vault Address
+    const user = await ctx.db.get(args.userId);
+    
+    return {
+      transactionId,
+      vaultAddress: user?.vaultAddress,
+    };
+  },
+});
+
+/**
  * Record a failed deposit (from UPI webhook)
  */
 export const recordFailedDeposit = internalMutation({
@@ -401,5 +438,26 @@ export const txHashExists = internalQuery({
       .collect();
 
     return transactions.some((t) => t.txHash === args.txHash);
+  },
+});
+
+/**
+ * Get transactions for a user within a time period (internal)
+ */
+export const getByUserForPeriod = internalQuery({
+  args: {
+    userId: v.id("users"),
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const transactions = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    return transactions.filter(
+      (t) => t.createdAt >= args.startDate && t.createdAt <= args.endDate
+    );
   },
 });

@@ -241,7 +241,7 @@ export const getByPhoneInternal = internalQuery({
 });
 
 /**
- * Get user by ID (internal - includes access token)
+ * Get user by ID (internal - includes access token and reward data)
  */
 export const getByIdInternal = internalQuery({
   args: { userId: v.id("users") },
@@ -255,6 +255,9 @@ export const getByIdInternal = internalQuery({
       accessToken: v.optional(v.string()),
       refreshToken: v.optional(v.string()),
       tokenExpiresAt: v.optional(v.number()),
+      rewardPoints: v.optional(v.number()),
+      rewardTier: v.optional(v.number()),
+      vaultAddress: v.optional(v.string()),
     }),
     v.null()
   ),
@@ -272,6 +275,9 @@ export const getByIdInternal = internalQuery({
       accessToken: user.accessToken,
       refreshToken: user.refreshToken,
       tokenExpiresAt: user.tokenExpiresAt,
+      rewardPoints: user.rewardPoints,
+      rewardTier: user.rewardTier,
+      vaultAddress: user.vaultAddress,
     };
   },
 });

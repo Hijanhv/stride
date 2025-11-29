@@ -16,7 +16,6 @@ import { action, internalAction } from "../_generated/server";
  * - Token refresh
  *
  * Network: Aptos Testnet (stage environment)
- * Documentation: See PHOTON_API_COMPLETE_GUIDE.md
  */
 
 // ============================================================================
@@ -97,15 +96,11 @@ function getConfig(): PhotonConfig {
         ? "https://api.getstan.app/identity-service/api/v1"
         : "https://stage-api.getstan.app/identity-service/api/v1"),
 
-    API_KEY:
-      process.env.PHOTON_API_KEY ||
-      "7bc5d06eb53ad73716104742c7e8a5377da9fe8156378dcfebfb8253da4e8800",
+    API_KEY: process.env.PHOTON_API_KEY || "",
 
-    JWT_SECRET:
-      process.env.PHOTON_JWT_SECRET || "qwertyuiopasdfghjklzxcvbnm123456",
+    JWT_SECRET: process.env.PHOTON_JWT_SECRET || "",
 
-    CAMPAIGN_ID:
-      process.env.PHOTON_CAMPAIGN_ID || "ea3bcaca-9ce4-4b54-b803-8b9be1f142ba",
+    CAMPAIGN_ID: process.env.PHOTON_CAMPAIGN_ID || "",
 
     APTOS_RPC_URL:
       process.env.APTOS_RPC_URL ||

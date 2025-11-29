@@ -10,7 +10,9 @@
     "convex": "^1.17.4",
     "dotenv": "^16.4.5",
     "jsonwebtoken": "^9.0.2",
-    "axios": "^1.6.8"
+    "axios": "^1.6.8",
+    "razorpay": "^2.9.4",
+    "@aptos-labs/ts-sdk": "^1.28.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
