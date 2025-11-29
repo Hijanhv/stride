@@ -543,52 +543,18 @@ stride/
 - Compliance receipts (Shelby)
 - Reward system (Photon)
 
-✅ **Complete Documentation**
 
-- 6 comprehensive guides
-- Business model & scaling strategy
-- Pitch deck outline
-- Setup instructions
 
-### Tracks We're Competing In
-
-1. **Payments & RWA** ($6,000)
-2. **DeFi Trading** ($6,000)
-3. **Photon Bonus** (Higher Tier)
-4. **Content Bounty** ($50)
-
-**Total Potential: $12,050+**
-
----
-
-## 👥 Team
-
-[Add your team details here]
-
-- **[Name]** - Full-Stack Developer
-- **[Name]** - Blockchain Developer
-- **[Name]** - Product Designer
-
----
-
-## 📞 Contact
-
-- **Email**: [your-email]
-- **Twitter**: [@stride_dca]
-- **Telegram**: [t.me/stride_community]
-- **Website**: [stride.app]
-
----
 
 ## 📄 License
 
 MIT License - see LICENSE file for details
 
----
+
 
 ## 🙏 Acknowledgments
 
-Built with ❤️ using:
+
 
 - [Aptos](https://aptos.dev) - Layer-1 blockchain
 - [Geomi](https://geomi.dev) - Gas Station & Indexer
@@ -598,32 +564,8 @@ Built with ❤️ using:
 - [Razorpay](https://razorpay.com) - UPI payments
 - [Convex](https://convex.dev) - Backend platform
 
----
 
-## 🚀 What's Next?
-
-### Immediate (Post-Hackathon)
-
-- [ ] Get remaining API keys
-- [ ] Deploy to testnet
-- [ ] End-to-end testing
-- [ ] Create demo video
-
-### Short-term (Month 1-3)
-
-- [ ] Beta launch in Mumbai
-- [ ] 1,000 users
-- [ ] Product-market fit
-
-### Long-term (Year 1-3)
-
-- [ ] Pan-India expansion
-- [ ] 200K users
-- [ ] ₹13 crore revenue
-- [ ] International expansion
-
----
 
 **Stride - Making Crypto Accessible to Every Indian** 🇮🇳🚀
 
-_Built for the Aptos Hackathon 2024_
+
