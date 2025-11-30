@@ -353,6 +353,19 @@ System Response:
 | **PortfolioScreen** | Analytics          | Geomi indexing + Pyth prices |
 | **ScanScreen**      | QR Code Payments   | UPI integration              |
 
+### App Screenshots
+
+<p align="center">
+  <img src="screenshots/home.jpg" width="200" alt="Home Screen" />
+  <img src="screenshots/portfolio.jpg" width="200" alt="Portfolio Screen" />
+  <img src="screenshots/wallet.jpg" width="200" alt="Wallet Screen" />
+</p>
+<p align="center">
+  <img src="screenshots/create_sip.jpg" width="200" alt="Create SIP Screen" />
+  <img src="screenshots/transactions.jpg" width="200" alt="Transactions Screen" />
+  <img src="screenshots/deposit.jpg" width="200" alt="Add Funds Screen" />
+</p>
+
 ## 🏆 Hackathon Track Eligibility - Multi-Track Submission
 
 ### **Track 2: Payments, RWA & Money Infrastructure** - Primary Track
