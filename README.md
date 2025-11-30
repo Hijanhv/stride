@@ -802,6 +802,6 @@ After deployment, verify on the Aptos Explorer:
 
 ---
 
-**Built with ❤️ for the Build on Aptos Hackathon 2024**
+
 
 _Multi-Track Submission: DeFi Trading | Payments Infrastructure | Consumer Apps | Shelby Integration | Photon Rewards_
