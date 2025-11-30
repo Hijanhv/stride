@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.aryankumar877.stride_mobile"
+      "package": "com.stride877.stride_mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"

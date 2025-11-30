@@ -18,6 +18,12 @@ UPI Payment ₹500 → Invisible Subaccount → Professional CLOB Trading → Re
 
 **🟢 Production Ready on Aptos Testnet**
 
+### 📱 Mobile App Demo
+
+**🔗 Download APK:** [Google Drive Link](https://drive.google.com/file/d/1k58SzbSq9JWT8B2qwgCp2ATeBbSuFJ7V/view?usp=sharing)
+
+**⚠️ Disclaimer:** This application is a demonstration prototype built for educational and hackathon purposes. The app simulates UPI-to-crypto transactions and portfolio management functionalities. All financial transactions shown are simulated and do not involve actual monetary value or real investments. This is not a financial product and should not be used for real trading or investment decisions.
+
 - **Contract Object:** [`0x6d80970ee6b73eef061b6a9d497e68f0d64475d13615d3fbb25bda5fa4f8bde0`](https://explorer.aptoslabs.com/account/0x6d80970ee6b73eef061b6a9d497e68f0d64475d13615d3fbb25bda5fa4f8bde0?network=testnet)
 - **Deployment TX:** [`0x6a1e6354dcaae3b0eb53fa635ba212799b7789acf586c72e47c7ecf2b3cf44c5`](https://explorer.aptoslabs.com/txn/0x6a1e6354dcaae3b0eb53fa635ba212799b7789acf586c72e47c7ecf2b3cf44c5?network=testnet)
 - **Initialization TX:** [`0xfc5f560e4149a82c693beeb4c37e301580f38f643b874065c4b15923e109cd11`](https://explorer.aptoslabs.com/txn/0xfc5f560e4149a82c693beeb4c37e301580f38f643b874065c4b15923e109cd11?network=testnet)
