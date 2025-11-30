@@ -4,10 +4,8 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-stride_contracts = "_"
+stride_protocol = "_"
 
-[dev-addresses]
-stride_contracts = "0xCAFE"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"

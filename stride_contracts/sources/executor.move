@@ -1,4 +1,4 @@
-module stride_contracts::executor {
+module stride_protocol::executor {
     use std::signer;
     use std::vector;
     use aptos_framework::object::{Self, Object};
@@ -6,9 +6,9 @@ module stride_contracts::executor {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
     use aptos_framework::event;
-    use stride_contracts::sip_vault::{Self, Vault};
-    use stride_contracts::rewards;
-    use stride_contracts::access_control;
+    use stride_protocol::sip_vault::{Self, Vault};
+    use stride_protocol::rewards;
+    use stride_protocol::access_control;
 
     /// Error codes
     /// Insufficient output from swap

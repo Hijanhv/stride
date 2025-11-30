@@ -1,4 +1,4 @@
-module stride_contracts::access_control {
+module stride_protocol::access_control {
     use std::signer;
     use std::vector;
     use std::error;

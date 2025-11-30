@@ -1,5 +1,5 @@
 script {
-    use stride_contracts::access_control;
+    use stride_protocol::access_control;
 
     /// Initialize the Stride platform on testnet
     /// This script should be run once by the admin account

@@ -1,4 +1,4 @@
-module stride_contracts::rewards {
+module stride_protocol::rewards {
     use std::signer;
     use std::string::String;
     use aptos_framework::timestamp;

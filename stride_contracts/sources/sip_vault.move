@@ -1,4 +1,4 @@
-module stride_contracts::sip_vault {
+module stride_protocol::sip_vault {
     use std::signer;
     use std::vector;
     use std::option;
@@ -8,7 +8,7 @@ module stride_contracts::sip_vault {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
     use aptos_framework::event;
-    use stride_contracts::access_control;
+    use stride_protocol::access_control;
 
     /// Error codes
     /// User is not authorized to perform this action

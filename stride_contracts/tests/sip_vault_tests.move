@@ -1,5 +1,5 @@
 #[test_only]
-module stride_contracts::sip_vault_tests {
+module stride_protocol::sip_vault_tests {
     use std::signer;
     use std::string;
     use aptos_framework::account;
@@ -7,8 +7,8 @@ module stride_contracts::sip_vault_tests {
     use aptos_framework::object;
     use aptos_framework::coin;
     use aptos_framework::aptos_coin::{Self, AptosCoin};
-    use stride_contracts::sip_vault;
-    use stride_contracts::access_control;
+    use stride_protocol::sip_vault;
+    use stride_protocol::access_control;
 
     // Test helper to create test accounts
     fun setup_test(aptos_framework: &signer): (signer, signer, signer) {
