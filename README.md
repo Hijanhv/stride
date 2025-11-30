@@ -26,7 +26,7 @@ UPI Payment ₹500 → Invisible Subaccount → Professional CLOB Trading → Re
 
 **🟢 Production Ready on Aptos Testnet**
 
-### 📱 Mobile App Demo
+### 📱 Mobile App 👇
 
 **🔗 Download APK:** [Google Drive Link](https://drive.google.com/file/d/1k58SzbSq9JWT8B2qwgCp2ATeBbSuFJ7V/view?usp=sharing)
 
