@@ -1,12 +1,16 @@
+import { api } from "@convex/_generated/api";
+import { Doc, Id } from "@convex/_generated/dataModel";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { useAction, useQuery } from "convex/react";
+import * as FileSystem from "expo-file-system/legacy";
+import { shareAsync } from "expo-sharing";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
-  Share,
   Text,
   TouchableOpacity,
   View,
@@ -14,75 +18,67 @@ import {
 import NBCard from "../components/NBCard";
 import NBHeader from "../components/NBHeader";
 
-interface Receipt {
-  id: string;
-  type: "sip_execution" | "deposit" | "monthly_report" | "tax_summary";
-  blobName: string;
-  summary: string;
-  period?: string;
-  createdAt: number;
-}
+type Receipt = Doc<"receipts">;
+type ReceiptsRoute = RouteProp<
+  { Receipts: { userId?: Id<"users"> } | undefined },
+  "Receipts"
+>;
+type IoniconName = keyof typeof Ionicons.glyphMap;
 
 export default function ReceiptsScreen() {
   const navigation = useNavigation();
+  const route = useRoute<ReceiptsRoute>();
+  const { userId } = route.params || {};
+
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  // Mock data - replace with Convex query
-  const receipts: Receipt[] = [
-    {
-      id: "1",
-      type: "monthly_report",
-      blobName: "monthly-reports/user123/2024-01.json",
-      summary: "January 2024 Investment Report",
-      period: "2024-01",
-      createdAt: Date.now() - 86400000,
-    },
-    {
-      id: "2",
-      type: "sip_execution",
-      blobName: "sip-receipts/user123/receipt-1.json",
-      summary: "SIP Execution - ₹100 → 1.48 APT",
-      createdAt: Date.now() - 3600000,
-    },
-    {
-      id: "3",
-      type: "deposit",
-      blobName: "deposits/user123/deposit-1.json",
-      summary: "UPI Deposit - ₹500",
-      createdAt: Date.now() - 7200000,
-    },
-  ];
+  // Fetch receipts from Convex
+  const receipts =
+    useQuery(
+      api.receipts.getByUser,
+      userId ? { userId } : "skip"
+    ) || [];
+  const downloadReceiptAction = useAction(api.actions.shelby.downloadReceipt);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // TODO: Fetch receipts from Convex
-    // await convex.query(api.receipts.getByUser, { userId });
+    // Queries auto-update, but we can simulate a refresh delay
     setTimeout(() => setRefreshing(false), 1000);
   };
 
   const handleDownload = async (receipt: Receipt) => {
-    setDownloading(receipt.id);
+    setDownloading(receipt._id);
 
     try {
-      // TODO: Call Convex action to download from Shelby
-      // const result = await convex.action(api.actions.shelby.downloadReceipt, {
-      //   blobName: receipt.blobName,
-      // });
+      const result = await downloadReceiptAction({
+        blobName: receipt.blobName,
+      });
 
-      // For now, show success message
-      Alert.alert(
-        "Receipt Downloaded",
-        `${receipt.summary}\n\nReceipt has been saved to your device.`,
-        [
-          {
-            text: "Share",
-            onPress: () => handleShare(receipt),
-          },
-          { text: "OK" },
-        ]
-      );
+      if (result.success && result.content) {
+        const filename = receipt.blobName.split("/").pop() || "receipt.json";
+        const fileUri = (FileSystem.documentDirectory || "") + filename;
+
+        await FileSystem.writeAsStringAsync(fileUri, result.content, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+
+        Alert.alert(
+          "Receipt Downloaded",
+          `Receipt saved to ${filename}`,
+          [
+            {
+              text: "Share/Open",
+              onPress: () => shareAsync(fileUri),
+            },
+            { text: "OK" },
+          ]
+        );
+      } else {
+        Alert.alert("Error", result.error || "Failed to download receipt content");
+      }
     } catch (error) {
+      console.error("Download error:", error);
       Alert.alert("Error", "Failed to download receipt");
     } finally {
       setDownloading(null);
@@ -90,17 +86,13 @@ export default function ReceiptsScreen() {
   };
 
   const handleShare = async (receipt: Receipt) => {
-    try {
-      await Share.share({
-        message: `Stride Receipt\n\n${receipt.summary}\n\nGenerated: ${new Date(receipt.createdAt).toLocaleString("en-IN")}`,
-        title: "Stride Receipt",
-      });
-    } catch (error) {
-      console.error("Share error:", error);
-    }
+    // For sharing, we might want to download first if we want to share the file
+    // Or just share the summary text
+    // Let's reuse handleDownload logic but trigger share immediately
+    handleDownload(receipt);
   };
 
-  const getReceiptIcon = (type: Receipt["type"]) => {
+  const getReceiptIcon = (type: Receipt["type"]): IoniconName => {
     switch (type) {
       case "monthly_report":
         return "calendar";
@@ -108,6 +100,8 @@ export default function ReceiptsScreen() {
         return "repeat";
       case "deposit":
         return "arrow-down-circle";
+      case "withdrawal":
+        return "swap-vertical";
       case "tax_summary":
         return "document-text";
       default:
@@ -123,6 +117,8 @@ export default function ReceiptsScreen() {
         return "bg-neo-blue";
       case "deposit":
         return "bg-neo-green";
+      case "withdrawal":
+        return "bg-neo-purple";
       case "tax_summary":
         return "bg-neo-yellow";
       default:
@@ -138,6 +134,8 @@ export default function ReceiptsScreen() {
         return "SIP Execution";
       case "deposit":
         return "Deposit";
+      case "withdrawal":
+        return "Withdrawal";
       case "tax_summary":
         return "Tax Summary";
       default:
@@ -200,7 +198,7 @@ export default function ReceiptsScreen() {
           </NBCard>
         ) : (
           receipts.map((receipt) => (
-            <NBCard key={receipt.id} className="mb-4 bg-white">
+            <NBCard key={receipt._id} className="mb-4 bg-white">
               <View className="flex-row items-center gap-3 mb-3">
                 <View
                   className={`w-12 h-12 border-2 border-black rounded-full items-center justify-center ${getReceiptColor(
@@ -208,7 +206,7 @@ export default function ReceiptsScreen() {
                   )}`}
                 >
                   <Ionicons
-                    name={getReceiptIcon(receipt.type) as any}
+                    name={getReceiptIcon(receipt.type)}
                     size={24}
                     color="black"
                   />
@@ -227,16 +225,16 @@ export default function ReceiptsScreen() {
               </View>
 
               <Text className="text-black font-bold text-sm mb-3">
-                {receipt.summary}
+                {receipt.summary || "No summary available"}
               </Text>
 
               <View className="flex-row gap-2">
                 <TouchableOpacity
                   onPress={() => handleDownload(receipt)}
-                  disabled={downloading === receipt.id}
+                  disabled={downloading === receipt._id}
                   className="flex-1 bg-neo-blue border-2 border-black rounded-lg py-3 shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
                 >
-                  {downloading === receipt.id ? (
+                  {downloading === receipt._id ? (
                     <ActivityIndicator color="black" />
                   ) : (
                     <View className="flex-row items-center justify-center gap-2">
@@ -250,7 +248,7 @@ export default function ReceiptsScreen() {
 
                 <TouchableOpacity
                   onPress={() => handleShare(receipt)}
-                  disabled={downloading === receipt.id}
+                  disabled={downloading === receipt._id}
                   className="flex-1 bg-neo-yellow border-2 border-black rounded-lg py-3 shadow-neo-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
                 >
                   <View className="flex-row items-center justify-center gap-2">

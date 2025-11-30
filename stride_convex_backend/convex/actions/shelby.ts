@@ -1,9 +1,11 @@
 "use node";
 
-import axios from "axios";
+import { Account, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk";
+import { ShelbyNodeClient } from "@shelby-protocol/sdk/node";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { action, internalAction } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
+import { action, ActionCtx, internalAction } from "../_generated/server";
 
 /**
  * Shelby Integration Module
@@ -20,11 +22,32 @@ import { action, internalAction } from "../_generated/server";
 // ============================================================================
 
 function getConfig() {
+  const network: Network.SHELBYNET | Network.LOCAL =
+    process.env.SHELBY_NETWORK === "local" ? Network.LOCAL : Network.SHELBYNET;
+
   return {
-    API_URL: process.env.SHELBY_API_URL || "https://api.shelby.dev/v1",
     API_KEY: process.env.SHELBY_API_KEY || "",
-    BUCKET_NAME: process.env.SHELBY_BUCKET_NAME || "stride-receipts",
+    // Shelby SDK supports LOCAL and SHELBYNET. Default to SHELBYNET.
+    NETWORK: network,
+    PRIVATE_KEY: process.env.SCHEDULER_PRIVATE_KEY || "",
   };
+}
+
+function getClient(config: ReturnType<typeof getConfig>) {
+  return new ShelbyNodeClient({
+    network: config.NETWORK,
+    apiKey: config.API_KEY,
+  });
+}
+
+function getSigner(privateKey: string) {
+  try {
+    const pKey = new Ed25519PrivateKey(privateKey);
+    return Account.fromPrivateKey({ privateKey: pKey });
+  } catch (e) {
+    console.error("Invalid private key for Shelby signer");
+    throw new Error("Invalid private key");
+  }
 }
 
 // ============================================================================
@@ -122,11 +145,148 @@ interface MonthlyReport {
   network: string;
 }
 
-interface ReceiptUploadResult {
-  success: boolean;
-  blobName?: string;
-  url?: string;
-  error?: string;
+// ============================================================================
+// SHARED LOGIC
+// ============================================================================
+
+async function generateSIPReceiptLogic(
+  ctx: ActionCtx,
+  args: {
+    userId: Id<"users">;
+    sipId: Id<"sips">;
+    transactionId: Id<"transactions">;
+    executionData: {
+      amountIn: number;
+      amountOut: number;
+      txHash: string;
+      blockNumber?: number;
+      rewardPoints?: number;
+    };
+  }
+) {
+  const config = getConfig();
+
+  try {
+    // Get user data
+    const user = await ctx.runQuery(internal.users.getByIdInternal, {
+      userId: args.userId,
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    // Get SIP data
+    const sip = await ctx.runQuery(internal.sips.getByIdInternal, {
+      sipId: args.sipId,
+    });
+
+    if (!sip) {
+      return { success: false, error: "SIP not found" };
+    }
+
+    // Generate receipt ID
+    const receiptId = `receipt-${args.transactionId}-${Date.now()}`;
+    const now = new Date().toISOString();
+
+    // Build receipt object
+    const receipt: SIPExecutionReceipt = {
+      version: "1.0.0",
+      receiptId,
+      receiptType: "sip_execution",
+
+      userId: args.userId,
+      walletAddress: user.walletAddress || "",
+
+      sipId: args.sipId,
+      sipName: sip.name,
+      sipIndex: sip.sipIndex || 0,
+      vaultAddress: sip.vaultAddress || "",
+
+      executionTimestamp: now,
+      executionNumber: (sip.executionCount || 0) + 1,
+
+      amountIn: args.executionData.amountIn,
+      amountInToken: "USDC",
+      amountOut: args.executionData.amountOut,
+      amountOutToken: sip.tokenSymbol || "APT",
+      executionPrice:
+        args.executionData.amountOut > 0
+          ? args.executionData.amountIn / args.executionData.amountOut
+          : 0,
+
+      txHash: args.executionData.txHash,
+      blockNumber: args.executionData.blockNumber,
+
+      rewardPoints: args.executionData.rewardPoints,
+
+      totalInvested: (sip.totalInvested || 0) + args.executionData.amountIn,
+      totalReceived: (sip.totalReceived || 0) + args.executionData.amountOut,
+      averagePrice: sip.averagePrice || 0,
+
+      network: process.env.APTOS_NETWORK || "testnet",
+      contractAddress: process.env.CONTRACT_ADDRESS || "0xcafe",
+      generatedAt: now,
+    };
+
+    // Upload to Shelby
+    let blobName = `sip-receipts/${args.userId}/${receiptId}.json`;
+    const blobData = Buffer.from(JSON.stringify(receipt));
+
+    // Default expiration: 30 days
+    const expirationMicros = (Date.now() + 30 * 24 * 60 * 60 * 1000) * 1000;
+
+    if (config.API_KEY && config.PRIVATE_KEY) {
+      try {
+        const client = getClient(config);
+        const signer = getSigner(config.PRIVATE_KEY);
+
+        await client.upload({
+          signer,
+          blobData,
+          blobName,
+          expirationMicros,
+        });
+
+        console.log(`[Shelby] Uploaded receipt successfully.`);
+      } catch (uploadError) {
+        console.warn("[Shelby] Upload failed, storing locally:", uploadError);
+        // Fallback or error handling
+      }
+    } else {
+      console.warn("[Shelby] Missing API Key or Private Key, skipping upload");
+    }
+
+    // Store receipt reference in Convex
+    await ctx.runMutation(internal.receipts.createReceipt, {
+      userId: args.userId,
+      transactionId: args.transactionId,
+      sipId: args.sipId,
+      type: "sip_execution",
+      blobName,
+      contentType: "application/json",
+      summary: JSON.stringify({
+        amountIn: args.executionData.amountIn,
+        amountOut: args.executionData.amountOut,
+        txHash: args.executionData.txHash,
+      }),
+    });
+
+    console.log(`[Shelby] Receipt generated: ${receiptId}`);
+
+    return {
+      success: true,
+      receiptId,
+      blobName,
+    };
+  } catch (error) {
+    console.error("[Shelby] Generate receipt error:", error);
+
+    return {
+      success: false,
+      error: "Failed to generate receipt",
+    };
+  }
 }
 
 // ============================================================================
@@ -156,115 +316,7 @@ export const generateSIPReceipt = action({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    const config = getConfig();
-
-    try {
-      // Get user data
-      const user = await ctx.runQuery(internal.users.getByIdInternal, {
-        userId: args.userId,
-      });
-
-      if (!user) {
-        return { success: false, error: "User not found" };
-      }
-
-      // Get SIP data
-      const sip = await ctx.runQuery(internal.sips.getByIdInternal, {
-        sipId: args.sipId,
-      });
-
-      if (!sip) {
-        return { success: false, error: "SIP not found" };
-      }
-
-      // Generate receipt ID
-      const receiptId = `receipt-${args.transactionId}-${Date.now()}`;
-      const now = new Date().toISOString();
-
-      // Build receipt object
-      const receipt: SIPExecutionReceipt = {
-        version: "1.0.0",
-        receiptId,
-        receiptType: "sip_execution",
-
-        userId: args.userId,
-        walletAddress: user.walletAddress || "",
-
-        sipId: args.sipId,
-        sipName: sip.name,
-        sipIndex: sip.sipIndex || 0,
-        vaultAddress: sip.vaultAddress || "",
-
-        executionTimestamp: now,
-        executionNumber: (sip.executionCount || 0) + 1,
-
-        amountIn: args.executionData.amountIn,
-        amountInToken: "USDC",
-        amountOut: args.executionData.amountOut,
-        amountOutToken: sip.tokenSymbol || "APT",
-        executionPrice:
-          args.executionData.amountOut > 0
-            ? args.executionData.amountIn / args.executionData.amountOut
-            : 0,
-
-        txHash: args.executionData.txHash,
-        blockNumber: args.executionData.blockNumber,
-
-        rewardPoints: args.executionData.rewardPoints,
-
-        totalInvested: (sip.totalInvested || 0) + args.executionData.amountIn,
-        totalReceived: (sip.totalReceived || 0) + args.executionData.amountOut,
-        averagePrice: sip.averagePrice || 0,
-
-        network: process.env.APTOS_NETWORK || "testnet",
-        contractAddress: process.env.CONTRACT_ADDRESS || "0xcafe",
-        generatedAt: now,
-      };
-
-      // Upload to Shelby (or store locally if not configured)
-      let blobName = `sip-receipts/${args.userId}/${receiptId}.json`;
-
-      if (config.API_KEY) {
-        try {
-          const uploadResult = await uploadToShelby(config, blobName, receipt);
-          if (uploadResult.success) {
-            blobName = uploadResult.blobName || blobName;
-          }
-        } catch (uploadError) {
-          console.warn("[Shelby] Upload failed, storing locally:", uploadError);
-        }
-      }
-
-      // Store receipt reference in Convex
-      await ctx.runMutation(internal.receipts.createReceipt, {
-        userId: args.userId,
-        transactionId: args.transactionId,
-        sipId: args.sipId,
-        type: "sip_execution",
-        blobName,
-        contentType: "application/json",
-        summary: JSON.stringify({
-          amountIn: args.executionData.amountIn,
-          amountOut: args.executionData.amountOut,
-          txHash: args.executionData.txHash,
-        }),
-      });
-
-      console.log(`[Shelby] Receipt generated: ${receiptId}`);
-
-      return {
-        success: true,
-        receiptId,
-        blobName,
-      };
-    } catch (error) {
-      console.error("[Shelby] Generate receipt error:", error);
-
-      return {
-        success: false,
-        error: "Failed to generate receipt",
-      };
-    }
+    return await generateSIPReceiptLogic(ctx, args);
   },
 });
 
@@ -374,13 +426,24 @@ export const generateMonthlyReport = action({
 
       // Upload to Shelby
       let blobName = `monthly-reports/${args.userId}/${args.period}.json`;
+      const blobData = Buffer.from(JSON.stringify(report));
+      
+      // Default expiration: 30 days
+      const expirationMicros = (Date.now() + 30 * 24 * 60 * 60 * 1000) * 1000;
 
-      if (config.API_KEY) {
+      if (config.API_KEY && config.PRIVATE_KEY) {
         try {
-          const uploadResult = await uploadToShelby(config, blobName, report);
-          if (uploadResult.success) {
-            blobName = uploadResult.blobName || blobName;
-          }
+          const client = getClient(config);
+          const signer = getSigner(config.PRIVATE_KEY);
+          
+          await client.upload({
+            signer,
+            blobData,
+            blobName,
+            expirationMicros,
+          });
+          
+          console.log(`[Shelby] Uploaded report successfully.`);
         } catch (uploadError) {
           console.warn("[Shelby] Upload failed, storing locally:", uploadError);
         }
@@ -424,6 +487,7 @@ export const generateMonthlyReport = action({
 export const downloadReceipt = action({
   args: {
     blobName: v.string(),
+    accountAddress: v.optional(v.string()), // Optional, if we want to download from specific account
   },
   returns: v.object({
     success: v.boolean(),
@@ -434,7 +498,6 @@ export const downloadReceipt = action({
     const config = getConfig();
 
     if (!config.API_KEY) {
-      // If Shelby not configured, return mock data
       return {
         success: true,
         content: JSON.stringify({
@@ -445,19 +508,33 @@ export const downloadReceipt = action({
     }
 
     try {
-      const response = await axios.get(
-        `${config.API_URL}/blobs/${args.blobName}`,
-        {
-          headers: {
-            Authorization: `Bearer ${config.API_KEY}`,
-          },
-          timeout: 15000,
-        }
-      );
+      const client = getClient(config);
+      // If accountAddress is not provided, we might need to derive it or use the scheduler's address
+      // But for download, we usually need the uploader's address. 
+      // Assuming the scheduler uploaded it:
+      const signer = getSigner(config.PRIVATE_KEY);
+      const accountAddress = args.accountAddress || signer.accountAddress.toString();
+
+      const blob = await client.download({
+        account: accountAddress,
+        blobName: args.blobName,
+      });
+
+      // Read readable stream to string
+      const reader = blob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+      
+      const content = Buffer.concat(chunks).toString("utf-8");
 
       return {
         success: true,
-        content: JSON.stringify(response.data),
+        content,
       };
     } catch (error) {
       console.error("[Shelby] Download error:", error);
@@ -469,10 +546,6 @@ export const downloadReceipt = action({
     }
   },
 });
-
-// ============================================================================
-// INTERNAL ACTIONS
-// ============================================================================
 
 /**
  * Auto-generate receipt after SIP execution (called by scheduler)
@@ -494,152 +567,18 @@ export const autoGenerateReceipt = internalAction({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    const config = getConfig();
-
-    try {
-      // Get user data
-      const user = await ctx.runQuery(internal.users.getByIdInternal, {
-        userId: args.userId,
-      });
-
-      if (!user) {
-        return { success: false, error: "User not found" };
-      }
-
-      // Get SIP data
-      const sip = await ctx.runQuery(internal.sips.getByIdInternal, {
-        sipId: args.sipId,
-      });
-
-      if (!sip) {
-        return { success: false, error: "SIP not found" };
-      }
-
-      // Generate receipt ID
-      const receiptId = `receipt-${args.transactionId}-${Date.now()}`;
-      const now = new Date().toISOString();
-
-      // Build receipt object
-      const receipt: SIPExecutionReceipt = {
-        version: "1.0.0",
-        receiptId,
-        receiptType: "sip_execution",
-
-        userId: args.userId,
-        walletAddress: user.walletAddress || "",
-
-        sipId: args.sipId,
-        sipName: sip.name,
-        sipIndex: sip.sipIndex || 0,
-        vaultAddress: sip.vaultAddress || "",
-
-        executionTimestamp: now,
-        executionNumber: (sip.executionCount || 0) + 1,
-
+    // Reuse the shared logic
+    return await generateSIPReceiptLogic(ctx, {
+      userId: args.userId,
+      sipId: args.sipId,
+      transactionId: args.transactionId,
+      executionData: {
         amountIn: args.amountIn,
-        amountInToken: "USDC",
         amountOut: args.amountOut,
-        amountOutToken: sip.tokenSymbol || "APT",
-        executionPrice: args.amountOut > 0 ? args.amountIn / args.amountOut : 0,
-
         txHash: args.txHash,
         blockNumber: args.blockNumber,
-
         rewardPoints: args.rewardPoints,
-
-        totalInvested: (sip.totalInvested || 0) + args.amountIn,
-        totalReceived: (sip.totalReceived || 0) + args.amountOut,
-        averagePrice: sip.averagePrice || 0,
-
-        network: process.env.APTOS_NETWORK || "testnet",
-        contractAddress: process.env.CONTRACT_ADDRESS || "0xcafe",
-        generatedAt: now,
-      };
-
-      // Upload to Shelby (or store locally if not configured)
-      let blobName = `sip-receipts/${args.userId}/${receiptId}.json`;
-
-      if (config.API_KEY) {
-        try {
-          const uploadResult = await uploadToShelby(config, blobName, receipt);
-          if (uploadResult.success) {
-            blobName = uploadResult.blobName || blobName;
-          }
-        } catch (uploadError) {
-          console.warn("[Shelby] Upload failed, storing locally:", uploadError);
-        }
-      }
-
-      // Store receipt reference in Convex
-      await ctx.runMutation(internal.receipts.createReceipt, {
-        userId: args.userId,
-        transactionId: args.transactionId,
-        sipId: args.sipId,
-        type: "sip_execution",
-        blobName,
-        contentType: "application/json",
-        summary: JSON.stringify({
-          amountIn: args.amountIn,
-          amountOut: args.amountOut,
-          txHash: args.txHash,
-        }),
-      });
-
-      console.log(`[Shelby] Auto-generated receipt: ${receiptId}`);
-
-      return {
-        success: true,
-        blobName,
-      };
-    } catch (error) {
-      console.error("[Shelby] Auto-generate receipt error:", error);
-
-      return {
-        success: false,
-        error: "Failed to auto-generate receipt",
-      };
-    }
+      },
+    });
   },
 });
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-async function uploadToShelby(
-  config: ReturnType<typeof getConfig>,
-  blobName: string,
-  content: object
-): Promise<ReceiptUploadResult> {
-  try {
-    const response = await axios.post(
-      `${config.API_URL}/blobs`,
-      {
-        bucket: config.BUCKET_NAME,
-        name: blobName,
-        content: JSON.stringify(content),
-        contentType: "application/json",
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.API_KEY}`,
-        },
-        timeout: 30000,
-      }
-    );
-
-    return {
-      success: true,
-      blobName: response.data.name || blobName,
-      url: response.data.url,
-    };
-  } catch (error) {
-    console.error("[Shelby] Upload error:", error);
-
-    return {
-      success: false,
-      error: "Failed to upload to Shelby",
-    };
-  }
-}

@@ -193,7 +193,7 @@ export const RAZORPAY_CONFIG = {
 export const SHELBY_CONFIG = {
   API_URL: process.env.SHELBY_API_URL || "https://api.shelby.dev/v1",
   API_KEY: process.env.SHELBY_API_KEY || "",
-  BUCKET_NAME: process.env.SHELBY_BUCKET_NAME || "stride-receipts",
+  NETWORK: process.env.SHELBY_NETWORK || "testnet",
 };
 
 // ============================================================================
