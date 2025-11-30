@@ -13,6 +13,14 @@
 ```
 UPI Payment ₹500 → Invisible Subaccount → Professional CLOB Trading → Real Portfolio Growth
 ```
+# Stride
+
+## 📄 Slide Deck  
+[Stride — PPT Presentation](https://pdflink.to/5b476293/)  
+
+## 🎥 Demo Video  
+[![Watch the Stride demo video](https://img.youtube.com/vi/MdGwtMJJTTc/0.jpg)](https://youtu.be/MdGwtMJJTTc)
+
 
 ## 🚀 Live Demo & Deployment
 
