@@ -2,11 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
 import {
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import NBButton from "../components/NBButton";
 import NBCard from "../components/NBCard";
@@ -58,7 +58,7 @@ export default function HomeScreen() {
             ₹{balance.toLocaleString("en-IN")}
           </Text>
 
-          <View className="flex-row gap-4 mb-3">
+          <View className="mb-3">
             <NBButton
               title="Add Money"
               onPress={() =>
@@ -68,14 +68,8 @@ export default function HomeScreen() {
                   userPhone: "+919876543210",
                 })
               }
-              className="flex-1 bg-neo-green"
+              className="w-full bg-neo-green"
               icon={<Ionicons name="add-circle" size={20} color="black" />}
-            />
-            <NBButton
-              title="Invest"
-              onPress={() => navigation.navigate("Scan")}
-              className="flex-1 bg-neo-yellow"
-              icon={<Ionicons name="trending-up" size={20} color="black" />}
             />
           </View>
 

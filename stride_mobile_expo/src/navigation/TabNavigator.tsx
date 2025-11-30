@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import PortfolioScreen from '../screens/PortfolioScreen';
-import ScanScreen from '../screens/ScanScreen';
+
 
 const Tab = createBottomTabNavigator();
 
@@ -41,18 +40,7 @@ export default function TabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="Scan"
-        component={ScanScreen}
-        options={{
-          title: '',
-          tabBarIcon: ({ focused }) => (
-            <View className="bg-neo-yellow w-16 h-16 rounded-full items-center justify-center -mt-10 border-2 border-black shadow-neo">
-              <Ionicons name="scan" size={30} color="black" />
-            </View>
-          ),
-        }}
-      />
+
       <Tab.Screen
         name="Portfolio"
         component={PortfolioScreen}
