@@ -153,6 +153,7 @@ export const registerUser = action({
     userId: v.optional(v.id("users")),
     walletAddress: v.optional(v.string()),
     photonId: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
@@ -208,6 +209,7 @@ export const registerUser = action({
         userId,
         walletAddress,
         photonId,
+        accessToken,
       };
     } catch (error) {
       console.error("[Photon] Registration error:", error);

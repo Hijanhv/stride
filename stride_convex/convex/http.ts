@@ -274,46 +274,6 @@ async function handlePaymentFailed(ctx: any, payment: any) {
 }
 
 // ============================================================================
-// PHOTON CALLBACKS (if needed)
-// ============================================================================
-
-/**
- * Photon Event Callback
- * POST /photon-callback
- *
- * Called by Photon API for event confirmations (if configured)
- */
-http.route({
-  path: "/photon-callback",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    try {
-      const body = await request.json();
-
-      console.log("[Photon Callback] Received:", JSON.stringify(body));
-
-      // TODO: Process Photon callback events
-      // This could be used for:
-      // - Token minting confirmations
-      // - Wallet creation confirmations
-      // - Campaign event confirmations
-
-      return new Response(JSON.stringify({ status: "received" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (error) {
-      console.error("[Photon Callback] Error:", error);
-
-      return new Response(
-        JSON.stringify({ error: "Failed to process callback" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
-  }),
-});
-
-// ============================================================================
 // APTOS BLOCKCHAIN EVENT TRACKING
 // ============================================================================
 
@@ -342,13 +302,7 @@ http.route({
  * - stride_convex/convex/indexer/geomi-client.ts - GraphQL polling client
  * - stride_convex/convex/indexer/order-fill-tracker.ts - Decibel fill tracking
  * - stride_convex/convex/crons.ts - Scheduled polling jobs
- *
- * For webhook-based event tracking (if needed in future), consider:
- * - Nodit.io - Provides webhook services for Aptos events
- * - Custom indexer - Run own indexer with webhook notifications
  */
 
-// Note: Placeholder webhook endpoint removed - Geomi uses GraphQL, not webhooks
-// See indexer/geomi-client.ts for proper implementation
 
 export default http;

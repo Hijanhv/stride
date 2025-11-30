@@ -18,8 +18,9 @@ UPI Payment ₹500 → Invisible Subaccount → Professional CLOB Trading → Re
 
 **🟢 Production Ready on Aptos Testnet**
 
-- **Contract Address:** [`0x1864e0d05da7e1912b18fa6a39c3a87623d441c33755c173313c93625e36aa90`](https://explorer.aptoslabs.com/account/0x1864e0d05da7e1912b18fa6a39c3a87623d441c33755c173313c93625e36aa90?network=testnet)
-- **Deployment Transaction:** [`0xcf9cdc580464b7f4f9b58579003a1a82391e76b896fb32821aa01d0d550d7a6c`](https://explorer.aptoslabs.com/txn/0xcf9cdc580464b7f4f9b58579003a1a82391e76b896fb32821aa01d0d550d7a6c?network=testnet)
+- **Contract Object:** [`0x6d80970ee6b73eef061b6a9d497e68f0d64475d13615d3fbb25bda5fa4f8bde0`](https://explorer.aptoslabs.com/account/0x6d80970ee6b73eef061b6a9d497e68f0d64475d13615d3fbb25bda5fa4f8bde0?network=testnet)
+- **Deployment TX:** [`0x6a1e6354dcaae3b0eb53fa635ba212799b7789acf586c72e47c7ecf2b3cf44c5`](https://explorer.aptoslabs.com/txn/0x6a1e6354dcaae3b0eb53fa635ba212799b7789acf586c72e47c7ecf2b3cf44c5?network=testnet)
+- **Initialization TX:** [`0xfc5f560e4149a82c693beeb4c37e301580f38f643b874065c4b15923e109cd11`](https://explorer.aptoslabs.com/txn/0xfc5f560e4149a82c693beeb4c37e301580f38f643b874065c4b15923e109cd11?network=testnet)
 - **Status:** All integrations live - UPI, DEX, Mobile, Smart Contracts
 
 ## 📊 Problem & Market Opportunity
@@ -542,10 +543,173 @@ aptos move publish \
   --named-addresses stride_protocol=0x1864e0d05da7e1912b18fa6a39c3a87623d441c33755c173313c93625e36aa90
 ```
 
+## 🚀 Smart Contract Deployment Guide
+
+### **Prerequisites**
+```bash
+# Install Aptos CLI
+curl -fsSL "https://aptos.dev/scripts/install.sh" | sh
+
+# Verify installation
+aptos --version  # Should show version 7.2.0 or higher
+```
+
+### **Create Your Wallet Account**
+```bash
+# Create a new profile for your deployment
+aptos init --profile my_deployment --network testnet
+
+# This will generate a new private key and account address
+# Save your private key securely! You'll need it for deployments.
+```
+
+### **Network Configuration**
+The project supports both **devnet** and **testnet** deployments:
+
+#### **For Testnet (Production)**
+```bash
+# Use the testnet network
+aptos config set-profiles --profile my_deployment \
+  --network testnet \
+  --private-key <YOUR_PRIVATE_KEY> \
+  --rest-url "https://fullnode.testnet.aptoslabs.com" \
+  --faucet-url "https://testnet-faucet.aptoslabs.com"
+```
+
+#### **For Devnet (Development)**
+```bash
+# Use the devnet network for testing
+aptos config set-profiles --profile my_deployment \
+  --network devnet \
+  --private-key <YOUR_PRIVATE_KEY> \
+  --rest-url "https://fullnode.devnet.aptoslabs.com" \
+  --faucet-url "https://faucet.devnet.aptoslabs.com"
+```
+
+### **Complete Deployment Workflow**
+
+#### **1. Get Your Account Address**
+```bash
+# Show your account address
+aptos config show-profiles
+# Note your account address - you'll need this for compilation
+```
+
+#### **2. Fund Your Account**
+**For Devnet:**
+```bash
+aptos account fund-with-faucet --profile my_deployment --amount 100000000
+```
+
+**For Testnet:**
+1. Visit: https://faucet.aptoslabs.com/
+2. Select "Testnet"
+3. Enter your account address
+4. Complete CAPTCHA and request test APT
+
+#### **3. Navigate to Contracts Directory**
+```bash
+cd stride_contracts
+```
+
+#### **4. Compile Contracts**
+```bash
+# Replace <YOUR_ACCOUNT_ADDRESS> with your actual address from step 1
+aptos move compile --named-addresses stride_protocol=<YOUR_ACCOUNT_ADDRESS>
+```
+
+#### **5. Run Tests (Optional)**
+```bash
+aptos move test --named-addresses stride_protocol=0x123
+```
+
+#### **6. Deploy Contracts**
+```bash
+# Deploy to object-based contracts
+aptos move deploy-object \
+  --address-name stride_protocol \
+  --assume-yes \
+  --profile my_deployment
+
+# ⚠️ IMPORTANT: Save the object address from the output!
+# This is your deployed contract address for your .env file
+```
+
+#### **7. Initialize Access Control**
+```bash
+# Use the OBJECT address from deployment output (not your account address)
+aptos move run \
+  --function-id <OBJECT_ADDRESS>::access_control::initialize \
+  --assume-yes \
+  --profile my_deployment
+```
+
+### **Environment Configuration**
+After deployment, update your `.env` file with your addresses:
+
+```bash
+# Add to your .env file - replace with YOUR addresses
+CONTRACT_OBJECT_ADDRESS=0x<YOUR_DEPLOYED_OBJECT_ADDRESS>
+CONTRACT_ADMIN_ADDRESS=0x<YOUR_ACCOUNT_ADDRESS>
+NETWORK=testnet  # or devnet
+```
+
+### **Example: Complete Deployment Walkthrough**
+```bash
+# 1. Create your deployment profile
+aptos init --profile my_deployment --network testnet
+
+# 2. Get your account address
+aptos config show-profiles
+# Example output: account: 0x1234567890abcdef...
+
+# 3. Fund your account via https://faucet.aptoslabs.com/
+
+# 4. Navigate and compile
+cd stride_contracts
+aptos move compile --named-addresses stride_protocol=0x1234567890abcdef...
+
+# 5. Deploy contracts
+aptos move deploy-object \
+  --address-name stride_protocol \
+  --assume-yes \
+  --profile my_deployment
+
+# 6. Save the object address from deployment output
+# Example: Object address: 0xabcdef1234567890...
+
+# 7. Initialize access control
+aptos move run \
+  --function-id 0xabcdef1234567890...::access_control::initialize \
+  --assume-yes \
+  --profile my_deployment
+```
+
+### **Verification & Monitoring**
+After deployment, verify on the Aptos Explorer:
+
+1. **Contract Object Address**: Use the object address from deployment output
+2. **Account Address**: Your admin account address
+3. **Explorer URL**: `https://explorer.aptoslabs.com/account/<OBJECT_ADDRESS>?network=testnet`
+
+### **Contract Modules Overview**
+- **access_control.move** - Role-based access control (Admin, Treasury, Scheduler roles)
+- **sip_vault.move** - DCA vault management with subaccount abstraction
+- **executor.move** - DEX integration and event emission
+- **rewards.move** - PAT token rewards and milestone tracking
+
+### **Important Notes**
+- ⚠️ **Save your private key securely** - you'll need it for future upgrades
+- ⚠️ **Save the object address** from deployment output - this is your contract address
+- 🔄 **Use object-based deployment** for easier upgrades and management
+- 🔍 **Always verify on Explorer** after deployment
+
 ## 🔗 Links & Resources
 
-- **Live Contract:** [Aptos Explorer](https://explorer.aptoslabs.com/account/0x1864e0d05da7e1912b18fa6a39c3a87623d441c33755c173313c93625e36aa90?network=testnet)
-- **Deployment TX:** [Transaction Explorer](https://explorer.aptoslabs.com/txn/0xcf9cdc580464b7f4f9b58579003a1a82391e76b896fb32821aa01d0d550d7a6c?network=testnet)
+### **Current Deployment (Stride Team)**
+- **Contract Object:** [Aptos Explorer](https://explorer.aptoslabs.com/account/0x6d80970ee6b73eef061b6a9d497e68f0d64475d13615d3fbb25bda5fa4f8bde0?network=testnet)
+- **Deployment TX:** [Transaction Explorer](https://explorer.aptoslabs.com/txn/0x6a1e6354dcaae3b0eb53fa635ba212799b7789acf586c72e47c7ecf2b3cf44c5?network=testnet)
+- **Initialization TX:** [Transaction Explorer](https://explorer.aptoslabs.com/txn/0xfc5f560e4149a82c693beeb4c37e301580f38f643b874065c4b15923e109cd11?network=testnet)
 - **Photon Integration:** [API Documentation](https://www.notion.so/2ba68efb91578054b6b7f863a5c0028e?pvs=21)
 - **Decibel DEX:** [Developer Docs](https://docs.decibel.trade/)
 - **Geomi Gas Station:** [Platform](https://geomi.dev/)

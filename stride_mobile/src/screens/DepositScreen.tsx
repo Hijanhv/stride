@@ -1,17 +1,17 @@
+import { api } from "@convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery } from "convex/react";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { api } from "../../convex/_generated/api";
 import NBButton from "../components/NBButton";
 import NBCard from "../components/NBCard";
 import NBHeader from "../components/NBHeader";
