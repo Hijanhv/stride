@@ -26,16 +26,18 @@ UPI Payment ₹500 → Invisible Subaccount → Professional CLOB Trading → Re
 ## 📊 Problem & Market Opportunity
 
 ### The Indian Crypto Paradox
+
 - **1.4B+ UPI users** vs **<50M crypto investors**
 - **$3T+ UPI volume** vs **$10B+ crypto market opportunity**
 - **30-second UPI onboarding** vs **30+ minute crypto exchange setup**
 
 ### Why Current Solutions Fall Short
-| Solution | Onboarding | Transaction Fees | Payment Method | User Experience |
-|----------|------------|------------------|----------------|-----------------|
-| **Traditional Exchanges** | 30+ minutes | Visible | Bank Transfer | Complex |
-| **DeFi Wallets** | 10+ minutes | High Gas Fees | Crypto Transfer | Very Complex |
-| **✅ Stride** | **30 seconds** | **Zero** | **UPI** | **Simple** |
+
+| Solution                  | Onboarding     | Transaction Fees | Payment Method  | User Experience |
+| ------------------------- | -------------- | ---------------- | --------------- | --------------- |
+| **Traditional Exchanges** | 30+ minutes    | Visible          | Bank Transfer   | Complex         |
+| **DeFi Wallets**          | 10+ minutes    | High Gas Fees    | Crypto Transfer | Very Complex    |
+| **✅ Stride**             | **30 seconds** | **Zero**         | **UPI**         | **Simple**      |
 
 ## 🏗️ Technical Architecture
 
@@ -75,6 +77,7 @@ let subaccount_addr = object::create_object_address(
 #### **🎯 Core Platform Integrations**
 
 **1. Aptos Blockchain (Layer 1)**
+
 ```bash
 ✅ Smart Contracts: 4 Move modules deployed live
 ✅ Address: 0x1864e0d05da7e1912b18fa6a39c3a87623d441c33755c173313c93625e36aa90
@@ -83,6 +86,7 @@ let subaccount_addr = object::create_object_address(
 ```
 
 **2. Razorpay (UPI Payments)**
+
 ```typescript
 ✅ Live UPI processing: Real Indian rupee payments
 ✅ Webhook integration: Instant payment confirmations
@@ -91,6 +95,7 @@ let subaccount_addr = object::create_object_address(
 ```
 
 **3. Decibel DEX (Professional Trading)**
+
 ```typescript
 ✅ CLOB integration: Real order book (not AMM)
 ✅ Subaccount trading: Institutional execution for retail users
@@ -99,6 +104,7 @@ let subaccount_addr = object::create_object_address(
 ```
 
 **4. Convex (Event-Driven Backend)**
+
 ```typescript
 ✅ 7 Action modules: Complete backend architecture
 ✅ Real-time cron jobs: 1-minute SIP execution
@@ -109,6 +115,7 @@ let subaccount_addr = object::create_object_address(
 #### **🛡️ Infrastructure & Compliance Integrations**
 
 **5. Geomi (Gasless + Indexing)**
+
 ```typescript
 ✅ Gas station: Zero transaction fees for users
 ✅ Indexer: Real-time blockchain event tracking
@@ -117,6 +124,7 @@ let subaccount_addr = object::create_object_address(
 ```
 
 **6. Shelby (Compliance & Receipts)**
+
 ```typescript
 ✅ Transaction storage: Immutable audit trails
 ✅ Compliance receipts: Tax-ready documentation
@@ -125,6 +133,7 @@ let subaccount_addr = object::create_object_address(
 ```
 
 **7. Photon (Embedded Wallet + Rewards)**
+
 ```typescript
 ✅ Custom JWT onboarding: Phone-based authentication
 ✅ Embedded wallets: Zero-friction experience
@@ -204,18 +213,20 @@ await photon.trackEvent({
   client_user_id: phone,
   campaign_id: "ea3bcaca-9ce4-4b54-b803-8b9be1f142ba",
   metadata: {},
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 });
 ```
 
 **Photon Features Implemented:**
+
 - ✅ **Passwordless onboarding** via custom JWT
-- ✅ **Embedded wallet provisioning** 
+- ✅ **Embedded wallet provisioning**
 - ✅ **Rewarded events** for SIP milestones
 - ✅ **Attribution tracking** for growth analytics
 - ✅ **PAT token rewards** creating engagement loops
 
 #### **🧠 Smart Contracts (Move) - Enterprise Security**
+
 ```
 stride_protocol/
 ├── access_control.move    # RBAC with Admin/Treasury/Scheduler roles
@@ -225,11 +236,13 @@ stride_protocol/
 ```
 
 **Security Features:**
+
 - `pause_all()` - Emergency controls
 - `emergency_withdraw()` - Asset protection
 - Complete audit trail via events
 
 #### **Backend (Convex) - Event-Driven Excellence**
+
 ```typescript
 // Real-time SIP execution
 export const executePendingSwaps = cronJobs.define({
@@ -240,33 +253,37 @@ export const executePendingSwaps = cronJobs.define({
       await decibel.executeOrder(swap);
       await rewards.issuePAT(swap.user, swap.amount);
     }
-  }
+  },
 });
 ```
 
 **Convex Modules:**
+
 - **7 Action Systems:** Shelby, Treasury, Geomi, Aptos, Decibel, Pyth, Photon
 - **Real-time Sync:** 1-minute cron processing
 - **Event Architecture:** Complete audit trail
 
 #### **Professional DEX Integration (Decibel)**
+
 - **CLOB Trading:** Not AMM - real order book with sub-20ms block times
 - **2-5 Second Execution:** Professional speed for retail users
 - **Market Depth:** >1M orders/second capacity
 - **Advanced Orders:** TWAP/VWAP capabilities ready
 
 #### **Gasless Architecture (Geomi)**
+
 ```typescript
 // Zero gas fees for users
 const gaslessTx = await geomi.sponsorTransaction({
   user: userAddress,
   contract: strideProtocol,
   method: "create_sip",
-  params: [amount, frequency]
+  params: [amount, frequency],
 });
 ```
 
 #### **Compliance & Receipts (Shelby)**
+
 ```typescript
 // Regulatory compliance for Indian market
 const compliance = await shelby.storeTransaction({
@@ -274,18 +291,20 @@ const compliance = await shelby.storeTransaction({
   amount: payment.amount,
   crypto_purchase: "APT",
   timestamp: new Date(),
-  compliance: "PMLA compliant"
+  compliance: "PMLA compliant",
 });
 ```
 
 ## 🎯 User Experience - Invisible Complexity
 
 ### **3-Tap Onboarding Journey**
+
 1. **Phone Number** → OTP verification
 2. **SIP Setup** → Amount & frequency selection
 3. **UPI Payment** → First investment complete
 
 ### **Behind the Scenes**
+
 ```
 User Action: "Pay ₹500 via UPI"
 
@@ -301,6 +320,7 @@ System Response:
 ```
 
 ### **Mobile App Features**
+
 - **Neo-brutalist design** for modern Indian users
 - **Real-time portfolio sync** via Convex
 - **Gasless transactions** - zero fee experience
@@ -310,17 +330,18 @@ System Response:
 
 ## 📱 Mobile App Screens
 
-| Screen | Function | Technical Implementation |
-|--------|----------|-------------------------|
-| **NBCard** | Portfolio Overview | Convex real-time sync |
-| **DepositScreen** | UPI Payment Flow | Razorpay + Photon wallet |
-| **ManageSIPScreen** | SIP Controls | Smart contract interaction |
-| **PortfolioScreen** | Analytics | Geomi indexing + Pyth prices |
-| **ScanScreen** | QR Code Payments | UPI integration |
+| Screen              | Function           | Technical Implementation     |
+| ------------------- | ------------------ | ---------------------------- |
+| **NBCard**          | Portfolio Overview | Convex real-time sync        |
+| **DepositScreen**   | UPI Payment Flow   | Razorpay + Photon wallet     |
+| **ManageSIPScreen** | SIP Controls       | Smart contract interaction   |
+| **PortfolioScreen** | Analytics          | Geomi indexing + Pyth prices |
+| **ScanScreen**      | QR Code Payments   | UPI integration              |
 
 ## 🏆 Hackathon Track Eligibility - Multi-Track Submission
 
 ### **Track 2: Payments, RWA & Money Infrastructure** - Primary Track
+
 **✅ Core Features Implemented**
 
 - **UPI Integration**: Razorpay payment gateway integration
@@ -330,6 +351,7 @@ System Response:
 - **Gasless Architecture**: Transaction sponsorship via Geomi
 
 ### **Track 1: DeFi Trading** - Strong Fit
+
 **✅ Trading Infrastructure**
 
 - **CLOB Integration**: Decibel DEX integration for order execution
@@ -339,6 +361,7 @@ System Response:
 - **Risk Controls**: Emergency pause functionality
 
 ### **Track 3: Consumer Apps** - Strong Fit
+
 **✅ Consumer-Facing Application**
 
 - **Mobile App**: React Native app with neo-brutalist design
@@ -348,6 +371,7 @@ System Response:
 - **Everyday Application**: Crypto investing made accessible for everyone
 
 ### **Track 4: Shelby Integration** - Compliance Layer
+
 **✅ Data Management**
 
 - **Transaction Storage**: Immutable receipt storage
@@ -356,6 +380,7 @@ System Response:
 - **Data Lineage**: Provable transaction records
 
 ### **Photon Integration** - User Experience Enhancement
+
 **✅ Complete Implementation**
 
 - **Embedded Wallets**: Photon wallet integration for users
@@ -366,6 +391,7 @@ System Response:
 ## 📊 Complete Implementation Stats
 
 ### **🏗️ Full Project Structure**
+
 ```
 stride/
 ├── stride_contracts/           # Smart Contracts (Move)
@@ -378,7 +404,7 @@ stride/
 │   │   └── sip_vault_tests.move   # Comprehensive test suite
 │   └── Move.toml                  # Package configuration
 │
-├── stride_convex/              # Backend (Convex)
+├── stride_convex_backend/              # Backend (Convex)
 │   ├── convex/                 # Convex configuration
 │   ├── cron.ts                 # Automated execution jobs
 │   ├── lib/
@@ -393,7 +419,7 @@ stride/
 │       ├── geomi.ts            # Gas sponsorship
 │       └── aptos.ts            # Blockchain interactions
 │
-├── stride_mobile/              # Mobile App (React Native)
+├── stride_mobile_expo/              # Mobile App (React Native)
 │   ├── src/
 │   │   ├── components/
 │   │   │   └── NBCard.tsx       # Portfolio overview
@@ -411,6 +437,7 @@ stride/
 ### **📈 Implementation Metrics**
 
 #### **Codebase Statistics**
+
 ```
 Smart Contracts:       4 Move modules, 5,000+ lines of production code
 Backend (Convex):      11 modules, 15,000+ lines of TypeScript
@@ -422,6 +449,7 @@ External Integrations: 7 major protocol integrations
 ```
 
 #### **Performance Metrics**
+
 ```
 Order Execution:       Connected to Decibel CLOB
 Blockchain Finality:   Aptos testnet performance
@@ -431,6 +459,7 @@ Transaction Cost:      Gas sponsorship via Geomi
 ```
 
 #### **Integration Implementation Status**
+
 ```
 ✅ Aptos Blockchain:     Smart contracts deployed on testnet
 ✅ Razorpay:            UPI payment processing implemented
@@ -444,6 +473,7 @@ Transaction Cost:      Gas sponsorship via Geomi
 ## 🔬 Smart Contract Deep Dive
 
 ### **Access Control Module**
+
 ```move
 // Role-based permissions for security
 public fun initialize(admin: &signer) {
@@ -457,6 +487,7 @@ public fun initialize(admin: &signer) {
 ```
 
 ### **SIP Vault Module**
+
 ```move
 // Creates deterministic subaccount for each user
 public fun create_vault(owner: &signer) {
@@ -470,6 +501,7 @@ public fun create_vault(owner: &signer) {
 ```
 
 ### **Event-Driven Design**
+
 ```move
 // Emits events for real-time processing
 public struct SwapPending has drop, store {
@@ -483,6 +515,7 @@ public struct SwapPending has drop, store {
 ## 🌐 Live Integrations
 
 ### **API Architecture**
+
 ```typescript
 // Unified data flow
 export const unifiedPipeline = async (upiPayment: UpiTransaction) => {
@@ -509,6 +542,7 @@ export const unifiedPipeline = async (upiPayment: UpiTransaction) => {
 ## � How to Run the Demo
 
 ### **Prerequisites**
+
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/stride.git
@@ -523,19 +557,22 @@ cp .env.example .env
 ```
 
 ### **Run Backend**
+
 ```bash
-cd stride_convex
+cd stride_convex_backend
 npm run dev  # Convex backend with all integrations
 ```
 
 ### **Run Mobile App**
+
 ```bash
-cd stride_mobile
+cd stride_mobile_expo
 npm install
 npx expo start  # React Native app
 ```
 
 ### **Deploy Contracts**
+
 ```bash
 cd stride_contracts
 aptos move publish \
@@ -546,6 +583,7 @@ aptos move publish \
 ## 🚀 Smart Contract Deployment Guide
 
 ### **Prerequisites**
+
 ```bash
 # Install Aptos CLI
 curl -fsSL "https://aptos.dev/scripts/install.sh" | sh
@@ -555,6 +593,7 @@ aptos --version  # Should show version 7.2.0 or higher
 ```
 
 ### **Create Your Wallet Account**
+
 ```bash
 # Create a new profile for your deployment
 aptos init --profile my_deployment --network testnet
@@ -564,9 +603,11 @@ aptos init --profile my_deployment --network testnet
 ```
 
 ### **Network Configuration**
+
 The project supports both **devnet** and **testnet** deployments:
 
 #### **For Testnet (Production)**
+
 ```bash
 # Use the testnet network
 aptos config set-profiles --profile my_deployment \
@@ -577,6 +618,7 @@ aptos config set-profiles --profile my_deployment \
 ```
 
 #### **For Devnet (Development)**
+
 ```bash
 # Use the devnet network for testing
 aptos config set-profiles --profile my_deployment \
@@ -589,6 +631,7 @@ aptos config set-profiles --profile my_deployment \
 ### **Complete Deployment Workflow**
 
 #### **1. Get Your Account Address**
+
 ```bash
 # Show your account address
 aptos config show-profiles
@@ -596,34 +639,41 @@ aptos config show-profiles
 ```
 
 #### **2. Fund Your Account**
+
 **For Devnet:**
+
 ```bash
 aptos account fund-with-faucet --profile my_deployment --amount 100000000
 ```
 
 **For Testnet:**
+
 1. Visit: https://faucet.aptoslabs.com/
 2. Select "Testnet"
 3. Enter your account address
 4. Complete CAPTCHA and request test APT
 
 #### **3. Navigate to Contracts Directory**
+
 ```bash
 cd stride_contracts
 ```
 
 #### **4. Compile Contracts**
+
 ```bash
 # Replace <YOUR_ACCOUNT_ADDRESS> with your actual address from step 1
 aptos move compile --named-addresses stride_protocol=<YOUR_ACCOUNT_ADDRESS>
 ```
 
 #### **5. Run Tests (Optional)**
+
 ```bash
 aptos move test --named-addresses stride_protocol=0x123
 ```
 
 #### **6. Deploy Contracts**
+
 ```bash
 # Deploy to object-based contracts
 aptos move deploy-object \
@@ -636,6 +686,7 @@ aptos move deploy-object \
 ```
 
 #### **7. Initialize Access Control**
+
 ```bash
 # Use the OBJECT address from deployment output (not your account address)
 aptos move run \
@@ -645,6 +696,7 @@ aptos move run \
 ```
 
 ### **Environment Configuration**
+
 After deployment, update your `.env` file with your addresses:
 
 ```bash
@@ -655,6 +707,7 @@ NETWORK=testnet  # or devnet
 ```
 
 ### **Example: Complete Deployment Walkthrough**
+
 ```bash
 # 1. Create your deployment profile
 aptos init --profile my_deployment --network testnet
@@ -686,6 +739,7 @@ aptos move run \
 ```
 
 ### **Verification & Monitoring**
+
 After deployment, verify on the Aptos Explorer:
 
 1. **Contract Object Address**: Use the object address from deployment output
@@ -693,12 +747,14 @@ After deployment, verify on the Aptos Explorer:
 3. **Explorer URL**: `https://explorer.aptoslabs.com/account/<OBJECT_ADDRESS>?network=testnet`
 
 ### **Contract Modules Overview**
+
 - **access_control.move** - Role-based access control (Admin, Treasury, Scheduler roles)
 - **sip_vault.move** - DCA vault management with subaccount abstraction
 - **executor.move** - DEX integration and event emission
 - **rewards.move** - PAT token rewards and milestone tracking
 
 ### **Important Notes**
+
 - ⚠️ **Save your private key securely** - you'll need it for future upgrades
 - ⚠️ **Save the object address** from deployment output - this is your contract address
 - 🔄 **Use object-based deployment** for easier upgrades and management
@@ -707,6 +763,7 @@ After deployment, verify on the Aptos Explorer:
 ## 🔗 Links & Resources
 
 ### **Current Deployment (Stride Team)**
+
 - **Contract Object:** [Aptos Explorer](https://explorer.aptoslabs.com/account/0x6d80970ee6b73eef061b6a9d497e68f0d64475d13615d3fbb25bda5fa4f8bde0?network=testnet)
 - **Deployment TX:** [Transaction Explorer](https://explorer.aptoslabs.com/txn/0x6a1e6354dcaae3b0eb53fa635ba212799b7789acf586c72e47c7ecf2b3cf44c5?network=testnet)
 - **Initialization TX:** [Transaction Explorer](https://explorer.aptoslabs.com/txn/0xfc5f560e4149a82c693beeb4c37e301580f38f643b874065c4b15923e109cd11?network=testnet)
@@ -719,4 +776,4 @@ After deployment, verify on the Aptos Explorer:
 
 **Built with ❤️ for the Build on Aptos Hackathon 2024**
 
-*Multi-Track Submission: DeFi Trading | Payments Infrastructure | Consumer Apps | Shelby Integration | Photon Rewards*
+_Multi-Track Submission: DeFi Trading | Payments Infrastructure | Consumer Apps | Shelby Integration | Photon Rewards_
